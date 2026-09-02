@@ -245,40 +245,11 @@ t1, t2, t3, t4, t5 = st.tabs([
     "🤖 AI & Rule Assistant"
 ])
 
+
 with t1:
-    conn = sqlite3.connect("journal.db")
-    df = pd.read_sql_query("SELECT * FROM trades ORDER BY id ASC", conn)
-    conn.close()
-
-    total_t = len(df)
-    net_pnl = df["pnl"].sum() if total_t > 0 else 0.0
-    w_trades = len(df[df["pnl"] > 0]) if total_t > 0 else 0
-    l_trades = len(df[df["pnl"] < 0]) if total_t > 0 else 0
-    w_rate = (w_trades / total_t * 100) if total_t > 0 else 0.0
-    avg_r = df["risk_reward"].mean() if total_t > 0 else 0.0
-
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total Trades", str(total_t))
-    m2.metric("Net P&L (₹)", f"₹{net_pnl:,.2f}")
-    m3.metric("Win Rate", f"{w_rate:.1f}%")
-    m4.metric("Avg R:R", f"1:{avg_r:.1f}")
-    m5.metric("Wins / Losses", f"{w_trades}W / {l_trades}L")
-
-    if not df.empty:
-        df["cum_pnl"] = df["pnl"].cumsum()
-        df["trade_no"] = range(1, len(df) + 1)
-        fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Growth Curve (₹)")
-        fig_eq.update_layout(template=plotly_template, height=220, margin=dict(l=10, r=10, t=30, b=10))
-        st.plotly_chart(fig_eq, use_container_width=True)
-        st.markdown("<b>📋 Synced Trades Log & Automated Audit Report</b>", unsafe_allow_html=True)
-        st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "pnl", "rule_followed", "setup_notes"]], use_container_width=True)
-        st.download_button("📥 Export Journal CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
-    else:
-        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Trades & Capital' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
-
-    st.markdown("---")
-    st.subheader("📖 Daily Trading Journal & Psychology Notes")
-
+    # ----------------------------------------------------
+    # 📖 Daily Journal & Psychology Notes Functions (Fixed Inside t1)
+    # ----------------------------------------------------
     JOURNAL_TEXT_FILE = "daily_notes.json"
 
     def load_daily_notes():
@@ -297,45 +268,7 @@ with t1:
         with open(JOURNAL_TEXT_FILE, "w", encoding="utf-8") as f:
             json.dump(notes_dict, f, indent=4)
 
-    all_notes = load_daily_notes()
 
-    today_date = str(datetime.today().date())
-    st.write(f"📅 **Date:** {today_date}")
-    existing_note = all_notes.get(today_date, "")
-
-    user_daily_note = st.text_area("How was the market today? Write about your fear, greed, or psychology here (30-50 words):", value=existing_note, height=120)
-
-    if st.button("💾 Save Today's Journal"):
-        all_notes[today_date] = user_daily_note
-        save_daily_notes(all_notes)
-        st.success("✅ Today's journal notes saved successfully!")
-
-    st.markdown("---")
-    st.markdown("### 📈 Weekly & Monthly Trading Performance")
-
-    if os.path.exists(JOURNAL_TEXT_FILE) and len(all_notes) > 0:
-        notes_df = pd.DataFrame(list(all_notes.items()), columns=["Date", "Notes"])
-        notes_df["Date"] = pd.to_datetime(notes_df["Date"])
-        
-        notes_df["Month"] = notes_df["Date"].dt.strftime('%Y-%m')
-        notes_df["Week"] = notes_df["Date"].dt.isocalendar().week
-
-        report_type = st.selectbox("Select Report:", ["All Notes by Date", "Monthly Analysis", "Weekly Analysis"])
-
-        if report_type == "All Notes by Date":
-            st.dataframe(notes_df[["Date", "Notes"]], use_container_width=True)
-        elif report_type == "Monthly Analysis":
-            selected_month = st.selectbox("Select Month:", notes_df["Month"].unique())
-            filtered_month_df = notes_df[notes_df["Month"] == selected_month]
-            st.write(f"📁 **Journal & Notes for Month: {selected_month}**")
-            st.dataframe(filtered_month_df, use_container_width=True)
-        elif report_type == "Weekly Analysis":
-            selected_week = st.selectbox("Select Week Number:", notes_df["Week"].unique())
-            filtered_week_df = notes_df[notes_df["Week"].astype(str) == str(selected_week)]
-            st.write(f"📁 **Journal & Notes for Week {selected_week}**")
-            st.dataframe(filtered_week_df, use_container_width=True)
-    else:
-        st.info("ℹ️ No journal notes saved yet. Once you write daily journals, weekly/monthly analysis will appear here.")
 
 with t2:
     st.markdown("<b>🔍 Performance & Behavioral Insights</b>", unsafe_allow_html=True)
