@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -99,7 +98,11 @@ def set_db_val(k, v):
     conn.commit()
     conn.close()
 
-p_pic = get_db_val("profile_pic")
+# Session State for Profile Picture
+if "profile_pic_b64" not in st.session_state:
+    st.session_state["profile_pic_b64"] = get_db_val("profile_pic")
+
+p_pic = st.session_state["profile_pic_b64"]
 if p_pic:
     st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{p_pic}" style="width:80px;height:80px;border-radius:50%;border:2px solid #38bdf8;"></div>', unsafe_allow_html=True)
 else:
@@ -110,8 +113,10 @@ st.sidebar.markdown("<div style='text-align:center;font-weight:bold;'>Lead Insti
 with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
     up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="p_uploader")
     if up_img:
-        set_db_val("profile_pic", base64.b64encode(up_img.read()).decode())
-        st.success("Photo Updated!")
+        b64_data = base64.b64encode(up_img.read()).decode()
+        st.session_state["profile_pic_b64"] = b64_data
+        set_db_val("profile_pic", b64_data)
+        st.success("Photo Updated Successfully!")
         st.rerun()
 
 st.sidebar.markdown("---")
