@@ -310,7 +310,6 @@ with t3:
                 if res.status_code == 200:
                     df_temp = pd.read_csv(io.StringIO(res.text))
                     df_temp = df_temp.loc[:, ~df_temp.columns.str.contains('^Unnamed')]
-                    # Assign the exact trading date for each day's record
                     df_temp["Trading_Date"] = d_check.strftime("%d-%m-%Y")
                     fetched_days_data.append(df_temp)
                     days_collected += 1
@@ -319,13 +318,11 @@ with t3:
             d_check -= timedelta(days=1)
             
         if fetched_days_data:
-            st.session_state["auto_3day_nse_fetched"] = fetched_days_data[0] # Latest
+            st.session_state["auto_3day_nse_fetched"] = fetched_days_data[0]
             st.session_state["history_3day_list"] = fetched_days_data
-            st.success("⚡ છેલ્લા ૩ દિવસના અલગ-અલગ ડેટા ઓટોમેટિક લોડ થઈ ગયા છે!")
         else:
             st.session_state["auto_3day_nse_fetched"] = None
 
-    # Date Selector for 3 Days History
     if "history_3day_list" in st.session_state and st.session_state["history_3day_list"]:
         available_dates = [df["Trading_Date"].iloc[0] for df in st.session_state["history_3day_list"]]
         selected_date = st.selectbox("📅 Select Trading Date to View:", available_dates)
@@ -349,7 +346,7 @@ with t3:
         {"Date": d_list[0], "Client Type": "Retail", "Net Sentiment": -51100},
         {"Date": d_list[0], "Client Type": "DII", "Net Sentiment": 21200},
         {"Date": d_list[0], "Client Type": "FII", "Net Sentiment": 85000},
-        {"Date": d_list[1], "Client Type": "Retail", "Net Sentiment": -71000},
+        {"Date": d_list[1], "Client Type": "Client Type", "Client Type": "Retail", "Net Sentiment": -71000},
         {"Date": d_list[1], "Client Type": "DII", "Net Sentiment": 24500},
         {"Date": d_list[1], "Client Type": "FII", "Net Sentiment": 98000},
         {"Date": d_list[2], "Client Type": "Retail", "Net Sentiment": -95000},
@@ -375,4 +372,8 @@ with t5:
     st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
     st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો. જ્યારે તમે Fyers માંથી ટ્રેડ્સ સિંક કરશો, ત્યારે આ ઓટોમેટેડ ઓડિટર તમારી ભૂલો પકડીને જર્નલમાં નોંધી દેશે:")
     st.markdown("1. **Overtrading Check:** નક્કી કરેલા મહત્તમ ટ્રેડ્સ કરતા વધારે ટ્રેડ થયા હશે તો એલર્ટ આપશે.")
-    st.markdown("2. **Risk Management Check:** જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે 'Risk Limit Cro
+    st.markdown("2. **Risk Management Check:** જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે 'Risk Limit Crossed' તરીકે ફ્લેગ થશે.")
+    
+    default_rules_text = get_db_val("custom_trading_rules") or (
+        "1. Never take a revenge trade after a loss.\n"
+        "2. Always res
