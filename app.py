@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -56,6 +55,11 @@ def init_db():
     c = conn.cursor()
     c.execute("CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, trade_date TEXT, session TEXT, timeframe TEXT, symbol TEXT, trade_type TEXT, quantity INTEGER, entry_price REAL, exit_price REAL, stop_loss REAL, target_price REAL, risk_reward REAL, pnl REAL, setup_type TEXT, entry_emotion TEXT, exit_reason TEXT, rule_followed TEXT, trade_grade TEXT, setup_notes TEXT, execution_type TEXT DEFAULT 'MANUAL', chart_img TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, val TEXT)")
+    # Auto-add chart_img column if missing in older databases
+    try:
+        c.execute("ALTER TABLE trades ADD COLUMN chart_img TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
