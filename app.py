@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -295,16 +294,14 @@ with t2:
         st.info("એનાલિટિક્સ જોવા માટે પહેલાં Fyers માંથી ટ્રેડ્સ સિંક કરો.")
 
 with t3:
-    st.markdown("<b>🏦 NSE Participant OI & Full Derivative Flow (Fully Automated 3-Day History)</b>", unsafe_allow_html=True)
+    st.markdown("<b>🏦 NSE Participant OI & Derivative Flow (True 3-Day History)</b>", unsafe_allow_html=True)
     
-    # Fully Automated Background Fetch for Last 3 Days
     if "auto_3day_nse_fetched" not in st.session_state:
         fetched_days_data = []
         headers = {"User-Agent": "Mozilla/5.0"}
-        
-        # Check last 5 days to ensure we get 3 valid trading days (skipping weekends)
         d_check = datetime.today()
         days_collected = 0
+        
         while days_collected < 3 and (datetime.today() - d_check).days < 10:
             d_str = d_check.strftime("%d%m%Y")
             url = f"https://archives.nseindia.com/content/nsccl/fao_participant_oi_{d_str}.csv"
@@ -312,7 +309,9 @@ with t3:
                 res = requests.get(url, headers=headers, timeout=3)
                 if res.status_code == 200:
                     df_temp = pd.read_csv(io.StringIO(res.text))
-                    df_temp["Fetch_Date"] = d_check.strftime("%d-%m-%Y")
+                    df_temp = df_temp.loc[:, ~df_temp.columns.str.contains('^Unnamed')]
+                    # Assign the exact trading date for each day's record
+                    df_temp["Trading_Date"] = d_check.strftime("%d-%m-%Y")
                     fetched_days_data.append(df_temp)
                     days_collected += 1
             except:
@@ -320,14 +319,22 @@ with t3:
             d_check -= timedelta(days=1)
             
         if fetched_days_data:
-            st.session_state["auto_3day_nse_fetched"] = fetched_days_data[0] # Latest day table
-            st.success("⚡ સોફ્ટવેરે બેકગ્રાઉન્ડમાં ઓટોમેટિક NSE નો લેટેસ્ટ ડેટા ફેચ કરી લીધો છે!")
+            st.session_state["auto_3day_nse_fetched"] = fetched_days_data[0] # Latest
+            st.session_state["history_3day_list"] = fetched_days_data
+            st.success("⚡ છેલ્લા ૩ દિવસના અલગ-અલગ ડેટા ઓટોમેટિક લોડ થઈ ગયા છે!")
         else:
             st.session_state["auto_3day_nse_fetched"] = None
 
-    # Display Live Table (Latest Day) or Structured Fallback
-    if st.session_state.get("auto_3day_nse_fetched") is not None:
-        st.dataframe(st.session_state["auto_3day_nse_fetched"], use_container_width=True)
+    # Date Selector for 3 Days History
+    if "history_3day_list" in st.session_state and st.session_state["history_3day_list"]:
+        available_dates = [df["Trading_Date"].iloc[0] for df in st.session_state["history_3day_list"]]
+        selected_date = st.selectbox("📅 Select Trading Date to View:", available_dates)
+        
+        for df_item in st.session_state["history_3day_list"]:
+            if df_item["Trading_Date"].iloc[0] == selected_date:
+                clean_df = df_item.loc[:, ~df_item.columns.str.contains('^Unnamed')]
+                st.dataframe(clean_df, use_container_width=True)
+                break
     else:
         full_inst_data = [
             {"Participant": "FII", "Idx Fut Longs": "1,35,314", "Idx Fut Shorts": "1,35,315", "Idx Fut Net": "-1", "Idx Calls Long": "4,95,729", "Idx Calls Short": "5,401", "Idx Calls Net": "+4,90,328", "Idx Puts Long": "1,66,995", "Idx Puts Short": "6,57,323", "Idx Puts Net": "-4,90,328", "Stock Fut Net": "+1,18,000", "Bias": "🟢 Strong Bullish"},
@@ -368,15 +375,4 @@ with t5:
     st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
     st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો. જ્યારે તમે Fyers માંથી ટ્રેડ્સ સિંક કરશો, ત્યારે આ ઓટોમેટેડ ઓડિટર તમારી ભૂલો પકડીને જર્નલમાં નોંધી દેશે:")
     st.markdown("1. **Overtrading Check:** નક્કી કરેલા મહત્તમ ટ્રેડ્સ કરતા વધારે ટ્રેડ થયા હશે તો એલર્ટ આપશે.")
-    st.markdown("2. **Risk Management Check:** જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે 'Risk Limit Crossed' તરીકે ફ્લેગ થશે.")
-    
-    default_rules_text = get_db_val("custom_trading_rules") or (
-        "1. Never take a revenge trade after a loss.\n"
-        "2. Always respect predefined Stop Loss.\n"
-        "3. Wait patiently for liquidity sweeps/Order blocks.\n"
-        "4. Stop trading for the day after hitting Daily Max Loss."
-    )
-    
-    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
-    
-    
+    st.markdown("2. **Risk Management Check:** જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે 'Risk Limit Cro
