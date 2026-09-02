@@ -55,7 +55,6 @@ def init_db():
     c = conn.cursor()
     c.execute("CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, trade_date TEXT, session TEXT, timeframe TEXT, symbol TEXT, trade_type TEXT, quantity INTEGER, entry_price REAL, exit_price REAL, stop_loss REAL, target_price REAL, risk_reward REAL, pnl REAL, setup_type TEXT, entry_emotion TEXT, exit_reason TEXT, rule_followed TEXT, trade_grade TEXT, setup_notes TEXT, execution_type TEXT DEFAULT 'MANUAL', chart_img TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, val TEXT)")
-    # Auto-add chart_img column if missing in older databases
     try:
         c.execute("ALTER TABLE trades ADD COLUMN chart_img TEXT")
     except sqlite3.OperationalError:
@@ -133,26 +132,35 @@ if live_tok:
 if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
     if app_id_val and live_tok:
         try:
-            r = requests.get("https://api-t1.fyers.in/api/v3/tradebook", headers={"Authorization": f"{app_id_val}:{live_tok}"})
-            t_data = r.json()
-            if t_data.get("s") == "ok" and "tradeBook" in t_data:
-                tr_list = t_data["tradeBook"]
-                if len(tr_list) == 0:
-                    st.sidebar.info("આજે કોઈ ટ્રેડ નથી.")
+            r = requests.get("https://api-t1.fyers.in/api/v3/positions", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+            pos_data = r.json()
+            if pos_data.get("s") == "ok":
+                net_positions = pos_data.get("netPositions", [])
+                if len(net_positions) == 0:
+                    st.sidebar.info("આજે કોઈ પોઝિશન મળી નથી.")
                 else:
                     conn = sqlite3.connect("journal.db")
                     cur = conn.cursor()
                     ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     c_cnt = 0
-                    for tr in tr_list:
-                        cur.execute("SELECT id FROM trades WHERE setup_notes = ?", (str(tr.get("tradeId")),))
-                        if not cur.fetchone():
-                            v = (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", tr.get("symbol", ""), "BUY" if tr.get("side") == 1 else "SELL", tr.get("tradedQty", 0), tr.get("tradePrice", 0.0), tr.get("tradePrice", 0.0), 0.0, 0.0, 0.0, 0.0, "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+", str(tr.get("tradeId")), "FYERS_AUTO", None)
+                    for pos in net_positions:
+                        sym = pos.get("symbol", "")
+                        qty = abs(pos.get("netQty", 0)) or abs(pos.get("qty", 0))
+                        buy_avg = pos.get("buyAvg", 0.0)
+                        sell_avg = pos.get("sellAvg", 0.0)
+                        pnl_val = pos.get("pl", 0.0)
+                        side_str = "BUY" if pos.get("side", 1) == 1 else "SELL"
+                        
+                        cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, datetime.today().strftime("%Y-%m-%d")))
+                        if not cur.fetchone() and (qty > 0 or pnl_val != 0):
+                            entry_p = buy_avg if buy_avg > 0 else sell_avg
+                            exit_p = sell_avg if sell_avg > 0 else buy_avg
+                            v = (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 0.0, float(pnl_val), "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
                             cur.execute(ins_sql, v)
                             c_cnt += 1
                     conn.commit()
                     conn.close()
-                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ ઉમેરાયા!")
+                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ ઓટોમેટિક સિંક થયા!")
                     st.rerun()
             else:
                 st.sidebar.error("Fyers API Error")
@@ -206,7 +214,7 @@ with t1:
         st.dataframe(df[["id", "trade_date", "symbol", "session", "trade_type", "quantity", "entry_price", "exit_price", "pnl", "setup_type", "rule_followed"]], use_container_width=True)
         st.download_button("📥 Export CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
     else:
-        st.info("જર્નલ ખાલી છે. નવો ટ્રેડ ઉમેરો અથવા સિંક કરો.")
+        st.info("જર્નલ ખાલી છે. Fyers માંથી સિંક કરો.")
 
 with t2:
     st.markdown("<b>Fast Trade Log</b>", unsafe_allow_html=True)
@@ -291,7 +299,7 @@ with t5:
     if not df_p.empty:
         st.plotly_chart(px.pie(df_p, names="rule_followed", title="Discipline Rate"), use_container_width=True)
     else:
-        st.info("એનાલિટિક્સ માટે પહેલાં ટ્રેડ્સ લૉગ કરો.")
+        st.info("એનાલિટિક્સ માટે પહેલાં ટ્રેડ્સ સિંક કરો.")
 
 with t6:
     st.markdown("<b>Spiritual Trader AI Rules</b>", unsafe_allow_html=True)
