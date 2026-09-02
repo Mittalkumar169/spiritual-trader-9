@@ -38,11 +38,11 @@ else:
 
 st.markdown(f"""
 <style>
-    .block-container {{ padding: 0.5rem 0.8rem !important; max-width: 100% !important; }}
+    .block-container {{ padding: 0.4rem 0.6rem !important; max-width: 100% !important; }}
     .stApp {{ background-color: {bg_color}; color: {text_color}; font-family: sans-serif; }}
     section[data-testid="stSidebar"] {{ background-color: {sidebar_bg} !important; border-right: 1px solid {border_col}; }}
-    div[data-testid="stMetric"] {{ background: {metric_bg}; border: 1px solid {border_col}; padding: 8px !important; border-radius: 8px; }}
-    .stTabs [data-baseweb="tab"] {{ height: 35px; border-radius: 6px; background-color: {tab_bg}; color: {text_color}; }}
+    div[data-testid="stMetric"] {{ background: {metric_bg}; border: 1px solid {border_col}; padding: 6px !important; border-radius: 6px; }}
+    .stTabs [data-baseweb="tab"] {{ height: 32px; border-radius: 6px; background-color: {tab_bg}; color: {text_color}; }}
     .stTabs [aria-selected="true"] {{ background: #2563eb !important; color: #ffffff !important; }}
 </style>
 """, unsafe_allow_html=True)
@@ -98,33 +98,28 @@ def set_db_val(k, v):
     conn.commit()
     conn.close()
 
-# Session State for Profile Picture
 if "profile_pic_b64" not in st.session_state:
     st.session_state["profile_pic_b64"] = get_db_val("profile_pic")
 
 p_pic = st.session_state["profile_pic_b64"]
-if p_pic:
-    st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{p_pic}" style="width:80px;height:80px;border-radius:50%;border:2px solid #38bdf8;"></div>', unsafe_allow_html=True)
-else:
-    st.sidebar.markdown('<div style="text-align:center;font-size:40px;">👤</div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("<div style='text-align:center;font-weight:bold;'>Lead Institutional Trader</div>", unsafe_allow_html=True)
+col_p1, col_p2 = st.sidebar.columns([1, 3])
+with col_p1:
+    if p_pic:
+        st.markdown(f'<img src="data:image/png;base64,{p_pic}" style="width:36px;height:36px;border-radius:50%;border:1px solid #38bdf8;object-fit:cover;">', unsafe_allow_html=True)
+    else:
+        st.markdown('<div style="font-size:24px;text-align:center;">👤</div>', unsafe_allow_html=True)
+with col_p2:
+    st.markdown("<div style='font-weight:bold;font-size:12px;padding-top:8px;'>Mittalkumar M.</div>", unsafe_allow_html=True)
 
-with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
+with st.sidebar.expander("📷 Edit Profile Photo", expanded=False):
     up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="p_uploader")
     if up_img:
         b64_data = base64.b64encode(up_img.read()).decode()
         st.session_state["profile_pic_b64"] = b64_data
         set_db_val("profile_pic", b64_data)
-        st.success("Photo Updated Successfully!")
+        st.success("Updated!")
         st.rerun()
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("<b>🛡️ Capital & Risk</b>", unsafe_allow_html=True)
-u_capital = st.sidebar.number_input("Capital (₹)", min_value=10000.0, value=100000.0, step=5000.0)
-r_pct = st.sidebar.slider("Risk (%)", 0.5, 3.0, 1.5, 0.25)
-d_loss = st.sidebar.number_input("Daily Stop Loss (₹)", min_value=1000.0, value=4000.0, step=500.0)
-max_r_amt = (u_capital * r_pct) / 100.0
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<b>⚡ Fyers Live Connect</b>", unsafe_allow_html=True)
@@ -180,7 +175,7 @@ if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
                         if not cur.fetchone() and (qty > 0 or pnl_val != 0):
                             entry_p = buy_avg if buy_avg > 0 else sell_avg
                             exit_p = sell_avg if sell_avg > 0 else buy_avg
-                            v = (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 0.0, float(pnl_val), "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
+                            v = (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
                             cur.execute(ins_sql, v)
                             c_cnt += 1
                     conn.commit()
@@ -202,14 +197,13 @@ if st.sidebar.button("🗑️ Clear Database Records", use_container_width=True)
     st.sidebar.success("Records Cleared!")
     st.rerun()
 
-st.markdown("<div style='font-size:18px;font-weight:bold;color:#2563eb;margin-bottom:8px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:16px;font-weight:bold;color:#2563eb;margin-bottom:6px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
 
-t1, t2, t3, t4, t5, t6 = st.tabs([
+t1, t2, t3, t4, t5 = st.tabs([
     "📊 Journal & Analytics",
-    "⚡ Trade Execution / Fast Log",
+    "📈 Performance Insights",
     "🏦 Institutional Flow",
     "🔥 Option Chain & VIX",
-    "🔍 Performance Analysis",
     "🤖 AI Assistant"
 ])
 
@@ -226,71 +220,41 @@ with t1:
     avg_r = df["risk_reward"].mean() if total_t > 0 else 0.0
 
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Trades", str(total_t))
-    m2.metric("P&L (₹)", f"₹{net_pnl:,.2f}")
+    m1.metric("Total Trades", str(total_t))
+    m2.metric("Net P&L (₹)", f"₹{net_pnl:,.2f}")
     m3.metric("Win Rate", f"{w_rate:.1f}%")
     m4.metric("Avg R:R", f"1:{avg_r:.1f}")
-    m5.metric("W / L", f"{w_trades}W / {l_trades}L")
+    m5.metric("Wins / Losses", f"{w_trades}W / {l_trades}L")
 
     if not df.empty:
         df["cum_pnl"] = df["pnl"].cumsum()
         df["trade_no"] = range(1, len(df) + 1)
-        fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Curve (₹)")
-        fig_eq.update_layout(template=plotly_template)
+        fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Growth Curve (₹)")
+        fig_eq.update_layout(template=plotly_template, height=220, margin=dict(l=10, r=10, t=30, b=10))
         st.plotly_chart(fig_eq, use_container_width=True)
-        st.dataframe(df[["id", "trade_date", "symbol", "session", "trade_type", "quantity", "entry_price", "exit_price", "pnl", "setup_type", "rule_followed"]], use_container_width=True)
-        st.download_button("📥 Export CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
+        st.markdown("<b>📋 Synced Trades Log</b>", unsafe_allow_html=True)
+        st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "entry_price", "exit_price", "pnl", "rule_followed"]], use_container_width=True)
+        st.download_button("📥 Export Journal CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
     else:
-        st.info("જર્નલ ખાલી છે. Fyers માંથી સિંક કરો.")
+        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Today's Trades' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
 
 with t2:
-    st.markdown("<b>Fast Trade Log</b>", unsafe_allow_html=True)
-    c_e = st.number_input("Calc: Entry (₹)", value=140.0, step=0.5)
-    c_s = st.number_input("Calc: Hard SL (₹)", value=125.0, step=0.5)
-    diff = abs(c_e - c_s) if abs(c_e - c_s) > 0 else 1.0
-    s_lots = max(1, int((max_r_amt // diff) // 25))
-    s_qty = s_lots * 25
-    st.info(f"Recommended: {s_lots} Lots ({s_qty} Qty) | Max Loss: ₹{diff * s_qty:,.0f}")
-
-    with st.form("tr_form"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            sym = st.text_input("Symbol", "NIFTY 24850 CE")
-            ses = st.selectbox("Session", ["Morning", "Mid-Day", "Closing"])
-            tf = st.selectbox("Timeframe", ["1m", "3m", "5m", "15m", "1H"])
-        with col2:
-            tt = st.selectbox("Type", ["BUY", "SELL"])
-            en = st.number_input("Entry (₹)", value=float(c_e), step=0.5)
-            ex = st.number_input("Exit (₹)", value=170.0, step=0.5)
-        with col3:
-            sl = st.number_input("SL (₹)", value=float(c_s), step=0.5)
-            tg = st.number_input("Target (₹)", value=180.0, step=0.5)
-            qt = st.number_input("Quantity", value=int(s_qty), step=25)
-
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            stp = st.selectbox("Setup", ["Order Block", "FVG", "Liquidity Sweep", "Break of Structure"])
-        with col5:
-            emo = st.selectbox("Emotion", ["Disciplined", "FOMO", "Revenge"])
-        with col6:
-            rul = st.selectbox("Rule Followed", ["Yes (100%)", "No (Violated SL)"])
-
-        notes = st.text_input("Notes", "Clean structure setup")
-        c_shot = st.file_uploader("Chart Screenshot (Optional)", type=["png", "jpg", "jpeg"])
-
-        if st.form_submit_button("Save Trade", use_container_width=True):
-            r_val = abs(en - sl) if abs(en - sl) > 0 else 1.0
-            rr_val = round(abs(tg - en) / r_val, 2)
-            c_pnl = (ex - en) * qt if tt == "BUY" else (en - ex) * qt
-            i_b64 = base64.b64encode(c_shot.read()).decode() if c_shot else None
-            conn = sqlite3.connect("journal.db")
-            c = conn.cursor()
-            q_ins = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            c.execute(q_ins, (datetime.today().strftime("%Y-%m-%d"), ses, tf, sym, tt, qt, en, ex, sl, tg, rr_val, c_pnl, stp, emo, "Manual Exit", rul, "A+", notes, "MANUAL", i_b64))
-            conn.commit()
-            conn.close()
-            st.success(f"Saved! P&L: ₹{c_pnl:,.2f}")
-            st.rerun()
+    st.markdown("<b>🔍 Performance & Behavioral Insights</b>", unsafe_allow_html=True)
+    conn = sqlite3.connect("journal.db")
+    df_p = pd.read_sql_query("SELECT * FROM trades", conn)
+    conn.close()
+    if not df_p.empty:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            fig_pie = px.pie(df_p, names="rule_followed", title="Discipline & Rule Following Rate")
+            fig_pie.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig_pie, use_container_width=True)
+        with col_b:
+            fig_bar = px.bar(df_p, x="symbol", y="pnl", color="trade_type", title="P&L by Symbol/Instrument")
+            fig_bar.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig_bar, use_container_width=True)
+    else:
+        st.info("એનાલિટિક્સ જોવા માટે પહેલાં Fyers માંથી ટ્રેડ્સ સિંક કરો.")
 
 with t3:
     st.info("NSE Participant Positioning (FII vs DII vs Retail)")
@@ -307,7 +271,7 @@ with t3:
         {"Date": d_list[2], "Client Type": "FII", "Net Sentiment": 118000}
     ]
     fig_inst = px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group")
-    fig_inst.update_layout(template=plotly_template)
+    fig_inst.update_layout(template=plotly_template, height=240, margin=dict(l=10, r=10, t=30, b=10))
     st.plotly_chart(fig_inst, use_container_width=True)
 
 with t4:
@@ -318,21 +282,10 @@ with t4:
     fig_o = go.Figure()
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Call OI"], name="Call OI", marker_color="#f43f5e"))
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Put OI"], name="Put OI", marker_color="#10b981"))
-    fig_o.update_layout(barmode="group", height=260, template=plotly_template)
+    fig_o.update_layout(barmode="group", height=240, template=plotly_template, margin=dict(l=10, r=10, t=30, b=10))
     st.plotly_chart(fig_o, use_container_width=True)
 
 with t5:
-    conn = sqlite3.connect("journal.db")
-    df_p = pd.read_sql_query("SELECT * FROM trades", conn)
-    conn.close()
-    if not df_p.empty:
-        fig_pie = px.pie(df_p, names="rule_followed", title="Discipline Rate")
-        fig_pie.update_layout(template=plotly_template)
-        st.plotly_chart(fig_pie, use_container_width=True)
-    else:
-        st.info("એનાલિટિક્સ માટે પહેલાં ટ્રેડ્સ લૉગ કરો.")
-
-with t6:
     st.markdown("<b>Spiritual Trader AI Rules</b>", unsafe_allow_html=True)
     st.write("1. Protect capital first. Always respect predefined Stop Loss.")
     st.write("2. Wait patiently for liquidity sweeps before execution.")
