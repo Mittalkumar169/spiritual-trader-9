@@ -1,5 +1,5 @@
-
 import base64
+import hashlib
 import io
 import os
 import sqlite3
@@ -83,58 +83,23 @@ def init_db():
 
 init_db()
 
-def get_profile_photo():
+def get_setting(k):
     conn = sqlite3.connect("journal.db")
     c = conn.cursor()
-    c.execute("SELECT val FROM settings WHERE key = 'profile_pic'")
+    c.execute("SELECT val FROM settings WHERE key = ?", (k,))
     row = c.fetchone()
     conn.close()
-    return row[0] if row else None
+    return row[0] if row else ""
 
-def save_profile_photo(b64_str):
+def save_setting(k, v):
     conn = sqlite3.connect("journal.db")
     c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO settings (key, val) VALUES ('profile_pic', ?)", (b64_str,))
+    c.execute("INSERT OR REPLACE INTO settings (key, val) VALUES (?, ?)", (k, v))
     conn.commit()
     conn.close()
 
-def get_participant_data():
-    today = datetime.today()
-    dates = [(today - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
-    records = [
-        {"Date": dates[0], "Client Type": "Client (Retail)", "Net Future": -24100, "Net Calls": -12000, "Net Puts": 15000, "Net Sentiment": -51100},
-        {"Date": dates[0], "Client Type": "DII", "Net Future": 14200, "Net Calls": 5000, "Net Puts": -2000, "Net Sentiment": 21200},
-        {"Date": dates[0], "Client Type": "FII", "Net Future": 42000, "Net Calls": 31000, "Net Puts": -12000, "Net Sentiment": 85000},
-        {"Date": dates[0], "Client Type": "Pro", "Net Future": 12000, "Net Calls": 15000, "Net Puts": -6000, "Net Sentiment": 33000},
-        {"Date": dates[1], "Client Type": "Client (Retail)", "Net Future": -31000, "Net Calls": -18000, "Net Puts": 22000, "Net Sentiment": -71000},
-        {"Date": dates[1], "Client Type": "DII", "Net Future": 16500, "Net Calls": 6200, "Net Puts": -1800, "Net Sentiment": 24500},
-        {"Date": dates[1], "Client Type": "FII", "Net Future": 48000, "Net Calls": 36000, "Net Puts": -14000, "Net Sentiment": 98000},
-        {"Date": dates[1], "Client Type": "Pro", "Net Future": 15500, "Net Calls": 18500, "Net Puts": -8000, "Net Sentiment": 42000},
-        {"Date": dates[2], "Client Type": "Client (Retail)", "Net Future": -42000, "Net Calls": -24000, "Net Puts": 29000, "Net Sentiment": -95000},
-        {"Date": dates[2], "Client Type": "DII", "Net Future": 19000, "Net Calls": 7800, "Net Puts": -2100, "Net Sentiment": 28900},
-        {"Date": dates[2], "Client Type": "FII", "Net Future": 56000, "Net Calls": 44000, "Net Puts": -18000, "Net Sentiment": 118000},
-        {"Date": dates[2], "Client Type": "Pro", "Net Future": 18200, "Net Calls": 22400, "Net Puts": -9500, "Net Sentiment": 50100},
-    ]
-    return pd.DataFrame(records)
-
-def get_active_option_chain():
-    spot = 24850.0
-    strikes = [spot + (i * 100) for i in range(-5, 6)]
-    rows = []
-    vix = 13.85
-    for s in strikes:
-        diff = s - spot
-        ce_oi = max(1800, int((550 - diff) * 230))
-        pe_oi = max(1600, int((550 + diff) * 260))
-        ce_ltp = max(8.0, round(270.0 - (diff * 0.54), 1))
-        pe_ltp = max(8.0, round(250.0 + (diff * 0.51), 1))
-        rows.append({
-            "CE LTP (₹)": ce_ltp, "Call OI": ce_oi, "Strike Price": int(s),
-            "Put OI": pe_oi, "PE LTP (₹)": pe_ltp
-        })
-    return pd.DataFrame(rows), spot, vix
-
-profile_img_data = get_profile_photo()
+# સાઇડબાર પ્રોફાઇલ
+profile_img_data = get_setting("profile_pic")
 st.sidebar.markdown("<div style='text-align: center; margin-bottom: 10px;'>", unsafe_allow_html=True)
 if profile_img_data:
     st.sidebar.markdown(f'<div style="display:flex; justify-content:center; margin-bottom:8px;"><img src="data:image/png;base64,{profile_img_data}" style="width:85px; height:85px; border-radius:50%; border:2px solid #38bdf8; object-fit:cover;"></div>', unsafe_allow_html=True)
@@ -147,7 +112,7 @@ with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
     up_photo = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"], key="prof_pic_input")
     if up_photo is not None:
         b64_p = base64.b64encode(up_photo.read()).decode()
-        save_profile_photo(b64_p)
+        save_setting("profile_pic", b64_p)
         st.success("Profile photo updated!")
         st.rerun()
 
@@ -161,14 +126,47 @@ st.sidebar.caption(f"Allowed Risk: **₹{max_risk_rupees:,.0f}** | Daily Loss: *
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h4 style='color:#10b981; margin:0;'>⚡ Fyers Live Connect</h4>", unsafe_allow_html=True)
-f_app_id = st.sidebar.text_input("Fyers App ID", placeholder="e.g. XC12345-100")
-f_token = st.sidebar.text_input("Access Token", type="password", placeholder="Enter Daily Token")
+
+f_app_id = st.sidebar.text_input("App ID", value=get_setting("fyers_app_id") or "8THHZH0S7K-200")
+f_secret_id = st.sidebar.text_input("Secret ID", value=get_setting("fyers_secret_id") or "RVdcb1TLXE7r9ftE", type="password")
+
+with st.sidebar.expander("🔑 Generate New Daily Token", expanded=True):
+    in_auth_code = st.text_area("Paste Auth Code Here", placeholder="Paste Auth Code from browser URL")
+    if st.button("Generate & Save Token", use_container_width=True):
+        if f_app_id and f_secret_id and in_auth_code:
+            try:
+                # AppIdHash = SHA-256(App_ID:Secret_ID)
+                app_hash = hashlib.sha256(f"{f_app_id}:{f_secret_id}".encode()).hexdigest()
+                payload = {
+                    "grant_type": "authorization_code",
+                    "appIdHash": app_hash,
+                    "code": in_auth_code.strip()
+                }
+                res = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json=payload)
+                t_data = res.json()
+                if t_data.get("s") == "ok" and "access_token" in t_data:
+                    token = t_data["access_token"]
+                    save_setting("fyers_app_id", f_app_id)
+                    save_setting("fyers_secret_id", f_secret_id)
+                    save_setting("fyers_access_token", token)
+                    st.success("✅ નવો Access Token સફળતાપૂર્વક બની ગયો!")
+                    st.rerun()
+                else:
+                    st.error("Error: " + t_data.get("message", "Invalid code or expired."))
+            except Exception as e:
+                st.error(f"Error: {e}")
+        else:
+            st.warning("App ID, Secret ID અને Auth Code ત્રણેય દાખલ કરો.")
+
+current_token = get_setting("fyers_access_token")
+if current_token:
+    st.sidebar.success("● Live Token Connected")
 
 if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
-    if f_app_id and f_token:
+    if f_app_id and current_token:
         try:
             url = "https://api-t1.fyers.in/api/v3/tradebook"
-            headers = {"Authorization": f"{f_app_id}:{f_token}"}
+            headers = {"Authorization": f"{f_app_id}:{current_token}"}
             res = requests.get(url, headers=headers)
             data = res.json()
             if data.get("s") == "ok" and "tradeBook" in data:
@@ -191,11 +189,11 @@ if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
                     st.sidebar.success(f"✅ {added} નવા ટ્રેડ જર્નલમાં સિંક થયા!")
                     st.rerun()
             else:
-                st.sidebar.error("Fyers API Error: " + data.get("message", "Invalid Token"))
+                st.sidebar.error("Fyers API Error: " + data.get("message", "Token expired or invalid."))
         except Exception as e:
             st.sidebar.error(f"Error: {str(e)}")
     else:
-        st.sidebar.warning("App ID અને Access Token બંને દાખલ કરો.")
+        st.sidebar.warning("પહેલાં Token Generate કરો.")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h4 style='color:#f43f5e; margin:0;'>🗑️ Maintenance</h4>", unsafe_allow_html=True)
@@ -333,63 +331,22 @@ with tab2:
             st.rerun()
 
 with tab3:
-    p_df = get_participant_data()
     st.markdown("""
     <div style="background:#161f30; border:1px solid #10b981; padding:8px 12px; border-radius:6px; margin-bottom:8px;">
         <span style="color:#10b981; font-weight:bold;">🟢 NSE INSTITUTIONAL ACCUMULATION VERDICT:</span> 
         FII અને Proprietary ડેસ્ક છેલ્લા ૩ દિવસથી Index Futures અને Call Options માં સતત નેટ-બાયર (Bullish) છે, જ્યારે Retail ક્લાયન્ટ્સ શોર્ટ (Bearish) પોઝિશનમાં છે.
     </div>
     """, unsafe_allow_html=True)
-    g1, g2 = st.columns([3, 2])
-    with g1:
-        fig_inst = px.bar(p_df, x="Date", y="Net Sentiment", color="Client Type", barmode="group",
-                          color_discrete_map={"Client (Retail)": "#f59e0b", "DII": "#06b6d4", "FII": "#10b981", "Pro": "#8b5cf6"},
-                          title="NSE 3-Day Participant Positioning (FII vs DII vs Retail)")
-        fig_inst.update_layout(plot_bgcolor="rgba(15, 23, 42, 0.6)", paper_bgcolor="rgba(0, 0, 0, 0)", font=dict(color="#94a3b8"), height=260, margin=dict(l=10, r=10, t=30, b=10))
-        st.plotly_chart(fig_inst, use_container_width=True)
-    with g2:
-        st.markdown("<b>છેલ્લા ૩ સત્રોનો ફ્યુચર/ઓપ્શન ડેટા:</b>", unsafe_allow_html=True)
-        st.dataframe(p_df, use_container_width=True, height=260)
-
-with tab4:
-    oc_df, spot_nifty, live_vix = get_active_option_chain()
-    st.markdown(f"""
-    <div style="display:flex; justify-content:space-between; align-items:center; background:#161f30; padding:6px 12px; border-radius:6px; border:1px solid #38bdf8; margin-bottom:8px;">
-        <div><b>NIFTY SPOT:</b> <span style="color:#10b981; font-size:16px;">{spot_nifty:,.0f}</span> | <b>INDIA VIX:</b> <span style="color:#38bdf8; font-size:16px;">{live_vix}</span></div>
-        <div style="color:#10b981; font-weight:bold; font-size:12px;">⚡ Option Bias: PUT WRITING DOMINANT (Strong Support at 24800)</div>
-    </div>
-    """, unsafe_allow_html=True)
-    fig_oi = go.Figure()
-    fig_oi.add_trace(go.Bar(x=oc_df["Strike Price"], y=oc_df["Call OI"], name="Call OI (Resistance)", marker_color="#f43f5e"))
-    fig_oi.add_trace(go.Bar(x=oc_df["Strike Price"], y=oc_df["Put OI"], name="Put OI (Support)", marker_color="#10b981"))
-    fig_oi.update_layout(barmode="group", plot_bgcolor="rgba(15, 23, 42, 0.6)", paper_bgcolor="rgba(0, 0, 0, 0)", font=dict(color="#94a3b8"), height=240, margin=dict(l=10, r=10, t=10, b=10))
-    st.plotly_chart(fig_oi, use_container_width=True)
-    st.dataframe(oc_df, use_container_width=True, height=200)
-
-with tab5:
-    conn = sqlite3.connect("journal.db")
-    df_adv = pd.read_sql_query("SELECT * FROM trades", conn)
-    conn.close()
-    if not df_adv.empty:
-        a_c1, a_c2 = st.columns(2)
-        with a_c1:
-            fig_pie = px.pie(df_adv, names="rule_followed", title="Discipline: Rule Adherence Rate",
-                             color_discrete_sequence=["#10b981", "#f43f5e", "#f59e0b"])
-            fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"), height=250)
-            st.plotly_chart(fig_pie, use_container_width=True)
-        with a_c2:
-            fig_sess = px.bar(df_adv.groupby("session")["pnl"].sum().reset_index(), x="session", y="pnl",
-                              title="P&L by Market Session", color="pnl", color_continuous_scale=["#f43f5e", "#10b981"])
-            fig_sess.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8"), height=250)
-            st.plotly_chart(fig_sess, use_container_width=True)
-    else:
-        st.info("એડવાન્સ્ડ એનાલિટિક્સ માટે પહેલા થોડા ટ્રેડ્સ લૉગ કરો અથવા સિંક કરો.")
-
-with tab6:
-    st.markdown("### 🤖 Spiritual Trader AI Assistant")
-    st.info("💡 **Discipline Check:** Protect your capital first. Never risk more than 1.5% and always respect your predefined Stop Loss.")
-    user_q = st.chat_input("Ask about setups, risk management rules, or market context...")
-    if user_q:
-        st.chat_message("user").write(user_q)
-        st.chat_message("assistant").write("Stick strictly to your execution rules. Wait for liquidity sweeps and confirmed market structure before taking any action.")
-
+    dates = [(datetime.today() - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
+    records = [
+        {"Date": dates[0], "Client Type": "Client (Retail)", "Net Sentiment": -51100},
+        {"Date": dates[0], "Client Type": "DII", "Net Sentiment": 21200},
+        {"Date": dates[0], "Client Type": "FII", "Net Sentiment": 85000},
+        {"Date": dates[0], "Client Type": "Pro", "Net Sentiment": 33000},
+        {"Date": dates[1], "Client Type": "Client (Retail)", "Net Sentiment": -71000},
+        {"Date": dates[1], "Client Type": "DII", "Net Sentiment": 24500},
+        {"Date": dates[1], "Client Type": "FII", "Net Sentiment": 98000},
+        {"Date": dates[1], "Client Type": "Pro", "Net Sentiment": 42000},
+        {"Date": dates[2], "Client Type": "Client (Retail)", "Net Sentiment": -95000},
+        {"Date": dates[2], "Client Type": "DII", "Net Sentiment": 28900},
+        {"Date": dates[2], "Client Type": "FII", "Net Sentim
