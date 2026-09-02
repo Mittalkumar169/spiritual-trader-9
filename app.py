@@ -349,4 +349,4 @@ with tab3:
         {"Date": dates[1], "Client Type": "Pro", "Net Sentiment": 42000},
         {"Date": dates[2], "Client Type": "Client (Retail)", "Net Sentiment": -95000},
         {"Date": dates[2], "Client Type": "DII", "Net Sentiment": 28900},
-        {"Date": dates[2], "Client Type": "FII", "Net Sentim
+        {"Date": dates[2], "Client Type": "FII", "Net Sentiment"
