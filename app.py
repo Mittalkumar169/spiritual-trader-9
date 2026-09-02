@@ -1,4 +1,42 @@
 
+import pandas as pd
+
+# ====================================================
+# 📅 વીકલી અને મંથલી એનાલિસિસ રિપોર્ટ
+# ====================================================
+st.markdown("---")
+st.markdown("### 📈 વીકલી અને મંથલી ટ્રેડિંગ પરફોર્મન્સ")
+
+if os.path.exists(JOURNAL_TEXT_FILE) and len(all_notes) > 0:
+    # સેવ કરેલી નોટ્સને ટેબલ ફોર્મેટમાં ફેરવો
+    notes_df = pd.DataFrame(list(all_notes.items()), columns=["તારીખ (Date)", "જર્નલ નોટ્સ (Notes)"])
+    notes_df["તારીખ (Date)"] = pd.to_datetime(notes_df["તારીખ (Date)"])
+    
+    # મહિનો અને અઠવાડિયું અલગ પાડો
+    notes_df["મહિનો (Month)"] = notes_df["તારીખ (Date)"].dt.strftime('%Y-%m')
+    notes_df["અઠવાડિયું (Week)"] = notes_df["તારીખ (Date)"].dt.isocalendar().week
+
+    # ફિલ્ટર ઓપ્શન
+    report_type = st.selectbox("റിਪોર્ટ سلెక్ટ કરો:", ["તારીખ મુજબ બધી નોટ્સ", "મંથલી એનાલિસિસ", "વીકલી એનાલિસિસ"])
+
+    if report_type == "તારીખ મુજબ બધી નોટ્સ":
+        st.dataframe(notes_df[["તારીખ (Date)", "જર્નલ નોટ્સ (Notes)"]], use_container_width=True)
+
+    elif report_type == "મંથલી એનાલિસિસ":
+        selected_month = st.selectbox("મહિનો પસંદ કરો:", notes_df["મહિનો (Month)"].unique())
+        filtered_month_df = notes_df[notes_df["મહિનો (Month)"] == selected_month]
+        st.write(f"📁 **મહિનો: {selected_month} ની જર્નલ અને નોટ્સ:**")
+        st.dataframe(filtered_month_df, use_container_width=True)
+
+    elif report_type == "વીકલી એનાલિસિસ":
+        selected_week = st.selectbox("અઠવાડિયું (Week Number) પસંદ કરો:", notes_df["અઠવાડિયું (Week)"].unique())
+        filtered_week_df = notes_df[notes_df["અઠવાડિયું (Week)"] == selected_week]
+        st.write(f"📁 **વીક {selected_week} ની જર્નલ અને નોટ્સ:**")
+        st.dataframe(filtered_week_df, use_container_width=True)
+else:
+    st.info("ℹ️ હજુ સુધી કોઈ જર્નલ નોટ્સ સેવ થઈ નથી. રોજ જર્નલ લખશો એટલે અહીં વીકલી/મંથલી એનાલિસિસ દેખાવા લાગશે.")
+
+
 import streamlit as st
 
 # 🔒 કાયમી ફિક્સ અને લૉક કરેલા નિયમો (કોઈ ક્યારેય બદલી નહીં શકે)
