@@ -1,4 +1,53 @@
 
+import streamlit as st
+import json
+import os
+
+SETTINGS_FILE = "user_locked_settings.json"
+
+def load_settings():
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"max_trades": 3, "max_loss": 1500.0, "risk_percent": 3.0, "is_locked": False}
+
+def save_settings(data):
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+current_settings = load_settings()
+
+st.subheader("🔒 રિસ્ક મેનેજમેન્ટ અને લૉક સેટિંગ્સ")
+
+if current_settings.get("is_locked", False):
+    st.success("✅ તમારા સેટિંગ્સ હાલમાં લૉક અને સુરક્ષિત છે.")
+    st.write(f"📌 **મેક્સ ટ્રેડ:** {current_settings['max_trades']}")
+    st.write(f"📌 **મેક્સ લોસ:** ₹{current_settings['max_loss']}")
+    st.write(f"📌 **રિસ્ક પર્સન્ટ:** {current_settings['risk_percent']}%")
+    
+    if st.button("🔓 સેટિંગ્સ એડિટ કરવા માટે અનલોક કરો"):
+        current_settings["is_locked"] = False
+        save_settings(current_settings)
+        st.rerun()
+else:
+    st.warning("⚠️ સેટિંગ્સ અનલોક છે. તમારી મરજી મુજબ સેટ કરીને 'Save & Lock' કરો.")
+    
+    new_max_trades = st.number_input("મેક્સ ટ્રેડ", value=current_settings["max_trades"], step=1)
+    new_max_loss = st.number_input("મેક્સ લોસ (₹)", value=current_settings["max_loss"], step=100.0)
+    new_risk_pct = st.number_input("રિસ્ક (%)", value=current_settings["risk_percent"], step=0.5)
+    
+    if st.button("💾 Save & Lock (કાયમ માટે લૉક કરો)"):
+        updated_data = {
+            "max_trades": int(new_max_trades),
+            "max_loss": float(new_max_loss),
+            "risk_percent": float(new_risk_pct),
+            "is_locked": True
+        }
+        save_settings(updated_data)
+        st.success("સફળતાપૂર્વક સેવ અને લૉક થઈ ગયું!")
+        st.rerun()
+
+
 import json
 import os
 
