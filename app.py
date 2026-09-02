@@ -283,8 +283,14 @@ with t1:
 
     def load_daily_notes():
         if os.path.exists(JOURNAL_TEXT_FILE):
-            with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    if not content.strip():
+                        return {}
+                    return json.loads(content)
+            except:
+                return {}
         return {}
 
     def save_daily_notes(notes_dict):
