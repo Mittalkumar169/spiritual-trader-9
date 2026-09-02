@@ -93,37 +93,8 @@ if not check_password():
 def init_db():
     conn = sqlite3.connect("journal.db")
     c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS trades (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            trade_date TEXT,
-            session TEXT,
-            timeframe TEXT,
-            symbol TEXT,
-            trade_type TEXT,
-            quantity INTEGER,
-            entry_price REAL,
-            exit_price REAL,
-            stop_loss REAL,
-            target_price REAL,
-            risk_reward REAL,
-            pnl REAL,
-            setup_type TEXT,
-            entry_emotion TEXT,
-            exit_reason TEXT,
-            rule_followed TEXT,
-            trade_grade TEXT,
-            setup_notes TEXT,
-            execution_type TEXT DEFAULT 'MANUAL',
-            chart_img TEXT
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            val TEXT
-        )
-    """)
+    c.execute("CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, trade_date TEXT, session TEXT, timeframe TEXT, symbol TEXT, trade_type TEXT, quantity INTEGER, entry_price REAL, exit_price REAL, stop_loss REAL, target_price REAL, risk_reward REAL, pnl REAL, setup_type TEXT, entry_emotion TEXT, exit_reason TEXT, rule_followed TEXT, trade_grade TEXT, setup_notes TEXT, execution_type TEXT DEFAULT 'MANUAL', chart_img TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, val TEXT)")
     conn.commit()
     conn.close()
 
@@ -182,28 +153,14 @@ def get_active_option_chain():
         })
     return pd.DataFrame(rows), spot, vix
 
-# સાઇડબાર પ્રોફાઇલ
 profile_img_data = get_profile_photo()
 st.sidebar.markdown("<div style='text-align: center; margin-bottom: 10px;'>", unsafe_allow_html=True)
 if profile_img_data:
-    st.sidebar.markdown(f"""
-    <div style="display: flex; justify-content: center; margin-bottom: 8px;">
-        <img src="data:image/png;base64,{profile_img_data}" style="width: 85px; height: 85px; border-radius: 50%; border: 2px solid #38bdf8; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
-    </div>
-    """, unsafe_allow_html=True)
+    st.sidebar.markdown(f'<div style="display: flex; justify-content: center; margin-bottom: 8px;"><img src="data:image/png;base64,{profile_img_data}" style="width: 85px; height: 85px; border-radius: 50%; border: 2px solid #38bdf8; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5);"></div>', unsafe_allow_html=True)
 else:
-    st.sidebar.markdown("""
-    <div style="display: flex; justify-content: center; margin-bottom: 8px;">
-        <div style="width: 85px; height: 85px; border-radius: 50%; background: #1e293b; border: 2px solid #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 36px;">👤</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.sidebar.markdown('<div style="display: flex; justify-content: center; margin-bottom: 8px;"><div style="width: 85px; height: 85px; border-radius: 50%; background: #1e293b; border: 2px solid #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 36px;">👤</div></div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("""
-<div style="text-align: center;">
-    <div style="font-weight: 700; font-size: 15px; color: #f8fafc;">Lead Institutional Trader</div>
-    <div style="font-size: 11px; color: #10b981; font-weight: 600;">● PRO TRADER (VERIFIED)</div>
-</div>
-""", unsafe_allow_html=True)
+st.sidebar.markdown('<div style="text-align: center;"><div style="font-weight: 700; font-size: 15px; color: #f8fafc;">Lead Institutional Trader</div><div style="font-size: 11px; color: #10b981; font-weight: 600;">● PRO TRADER (VERIFIED)</div></div>', unsafe_allow_html=True)
 
 with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
     up_photo = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"], key="prof_pic_input")
@@ -243,20 +200,12 @@ if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
                     conn = sqlite3.connect("journal.db")
                     c = conn.cursor()
                     added = 0
+                    insert_query = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     for t in trades:
                         c.execute("SELECT id FROM trades WHERE setup_notes = ?", (str(t.get("tradeId")),))
                         if not c.fetchone():
-                            c.execute("""
-                                INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity,
-                                                    entry_price, exit_price, stop_loss, target_price, risk_reward,
-                                                    pnl, setup_type, entry_emotion, exit_reason, rule_followed,
-                                                    trade_grade, setup_notes, execution_type, chart_img)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", t.get("symbol", ""),
-                                  "BUY" if t.get("side") == 1 else "SELL", t.get("tradedQty", 0),
-                                  t.get("tradePrice", 0.0), t.get("tradePrice", 0.0), 0.0, 0.0, 0.0, 0.0,
-                                  "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+",
-                                  str(t.get("tradeId")), "FYERS_AUTO", None))
+                            trade_vals = (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", t.get("symbol", ""), "BUY" if t.get("side") == 1 else "SELL", t.get("tradedQty", 0), t.get("tradePrice", 0.0), t.get("tradePrice", 0.0), 0.0, 0.0, 0.0, 0.0, "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+", str(t.get("tradeId")), "FYERS_AUTO", None)
+                            c.execute(insert_query, trade_vals)
                             added += 1
                     conn.commit()
                     conn.close()
@@ -401,9 +350,16 @@ with tab2:
 
             conn = sqlite3.connect("journal.db")
             c = conn.cursor()
-            c.execute("""
-                INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity,
-                                    entry_price, exit_price, stop_loss, target_price, risk_reward,
-                                    pnl, setup_type, entry_emotion, exit_reason, rule_followed,
-                                    trade_grade, setup_notes, execution_type, chart_img)
-                VALUES (?, ?, ?, ?, ?,
+            insert_single_query = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            c.execute(insert_single_query, (datetime.today().strftime("%Y-%m-%d"), t_session, t_tf, t_symbol, t_type, t_qty, t_entry, t_exit, t_sl, t_tgt, rr, calc_pnl, t_setup, t_emotion, "Manual Target/Exit", t_rule, "A+", t_notes, "MANUAL_LOG", img_b64))
+            conn.commit()
+            conn.close()
+            st.success(f"🎉 Trade successfully saved! Net P&L: ₹{calc_pnl:,.2f}")
+            st.rerun()
+
+with tab3:
+    p_df = get_participant_data()
+    st.markdown("""
+    <div style="background:#161f30; border:1px solid #10b981; padding:8px 12px; border-radius:6px; margin-bottom:8px;">
+        <span style="color:#10b981; font-weight:bold;">🟢 NSE INSTITUTIONAL ACCUMULATION VERDICT:</span> 
+        FII અને Proprietary ડેસ્ક છેલ્લા ૩ દિવસથી Index Futures અને Call Options માં સતત નેટ
