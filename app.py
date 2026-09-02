@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -40,7 +41,7 @@ st.markdown(f"""
 <style>
     .block-container {{ padding: 0.4rem 0.6rem !important; max-width: 100% !important; }}
     .stApp {{ background-color: {bg_color}; color: {text_color}; font-family: sans-serif; }}
-    section[data-testid="stSidebar"] {{ background-color: {sidebar_bg} !important; border-right: 1px solid {border_col}; }}
+    section[data-testid="stSidebar"] {{ background-color: {sidebar_bg} !important; border-right: 1px solid {border_col}; min-width: 220px !important; max-width: 220px !important; }}
     div[data-testid="stMetric"] {{ background: {metric_bg}; border: 1px solid {border_col}; padding: 6px !important; border-radius: 6px; }}
     .stTabs [data-baseweb="tab"] {{ height: 32px; border-radius: 6px; background-color: {tab_bg}; color: {text_color}; }}
     .stTabs [aria-selected="true"] {{ background: #2563eb !important; color: #ffffff !important; }}
@@ -106,38 +107,23 @@ p_pic = st.session_state["profile_pic_b64"]
 col_p1, col_p2 = st.sidebar.columns([1, 3])
 with col_p1:
     if p_pic:
-        st.markdown(f'<img src="data:image/png;base64,{p_pic}" style="width:36px;height:36px;border-radius:50%;border:1px solid #38bdf8;object-fit:cover;">', unsafe_allow_html=True)
+        st.markdown(f'<img src="data:image/png;base64,{p_pic}" style="width:32px;height:32px;border-radius:50%;border:1px solid #38bdf8;object-fit:cover;">', unsafe_allow_html=True)
     else:
-        st.markdown('<div style="font-size:24px;text-align:center;">👤</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:20px;text-align:center;">👤</div>', unsafe_allow_html=True)
 with col_p2:
-    st.markdown("<div style='font-weight:bold;font-size:12px;padding-top:8px;'>Mittalkumar M.</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-weight:bold;font-size:11px;padding-top:6px;'>Mittalkumar M.</div>", unsafe_allow_html=True)
 
-with st.sidebar.expander("📷 Edit Profile Photo", expanded=False):
-    with st.form("photo_upload_form", clear_on_submit=True):
-        up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"])
-        submitted = st.form_submit_button("Upload & Save", use_container_width=True)
-        if submitted and up_img is not None:
-            try:
-                b64_data = base64.b64encode(up_img.read()).decode()
-                st.session_state["profile_pic_b64"] = b64_data
-                set_db_val("profile_pic", b64_data)
-                st.success("ફોટો સફળતાપૂર્વક અપલોડ થઈ ગયો!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("<b>🛡️ Capital & Risk Management Rules</b>", unsafe_allow_html=True)
-total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=float(get_db_val("tot_cap") or 10000.0), step=1000.0)
-risk_pct = st.sidebar.slider("Max Risk per Trade (%)", 0.5, 5.0, float(get_db_val("risk_pct") or 2.0), 0.5)
-max_allowed_trades = st.sidebar.number_input("Max Trades Limit / Day", min_value=1, max_value=20, value=int(get_db_val("max_trades") or 3))
-
-max_risk_amt = (total_capital * risk_pct) / 100.0
-st.sidebar.info(f"💡 Per Trade Max Risk: ₹{max_risk_amt:,.0f}")
-
-set_db_val("tot_cap", str(total_capital))
-set_db_val("risk_pct", str(risk_pct))
-set_db_val("max_trades", str(max_allowed_trades))
+with st.sidebar.expander("📷 Profile Photo", expanded=False):
+    up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="profile_uploader")
+    if up_img is not None:
+        try:
+            b64_data = base64.b64encode(up_img.getvalue()).decode()
+            st.session_state["profile_pic_b64"] = b64_data
+            set_db_val("profile_pic", b64_data)
+            st.success("ફોટો સેવ થઈ ગયો!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<b>⚡ Fyers Live Connect</b>", unsafe_allow_html=True)
@@ -167,71 +153,85 @@ live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-if st.sidebar.button("🔄 Sync Today's Trades & Audit", use_container_width=True):
+# Fetch Live Capital from Fyers Funds API automatically if connected
+default_capital = float(get_db_val("tot_cap") or 10000.0)
+if app_id_val and live_tok:
+    try:
+        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+        funds_data = funds_resp.json()
+        if funds_data.get("s") == "ok":
+            for item in funds_data.get("fund_limit", []):
+                if item.get("title") == "Client Balance" or "Total Balance" in str(item.get("title")):
+                    live_bal = float(item.get("equityAmount", 0.0))
+                    if live_bal > 0:
+                        default_capital = live_bal
+    except Exception:
+        pass
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("<b>🛡️ Capital & Risk Management</b>", unsafe_allow_html=True)
+total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=default_capital, step=1000.0)
+risk_pct = st.sidebar.slider("Max Risk / Trade (%)", 0.5, 5.0, float(get_db_val("risk_pct") or 2.0), 0.5)
+max_allowed_trades = st.sidebar.number_input("Max Trades / Day", min_value=1, max_value=20, value=int(get_db_val("max_trades") or 3))
+
+max_risk_amt = (total_capital * risk_pct) / 100.0
+st.sidebar.info(f"💡 Per Trade Max Risk: ₹{max_risk_amt:,.0f}")
+
+set_db_val("tot_cap", str(total_capital))
+set_db_val("risk_pct", str(risk_pct))
+set_db_val("max_trades", str(max_allowed_trades))
+
+if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
     if app_id_val and live_tok:
         try:
             r = requests.get("https://api-t1.fyers.in/api/v3/positions", headers={"Authorization": f"{app_id_val}:{live_tok}"})
             pos_data = r.json()
             if pos_data.get("s") == "ok":
                 net_positions = pos_data.get("netPositions", [])
-                if len(net_positions) == 0:
-                    st.sidebar.info("આજે કોઈ પોઝિશન મળી નથી.")
-                else:
-                    conn = sqlite3.connect("journal.db")
-                    cur = conn.cursor()
-                    ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                    c_cnt = 0
-                    today_str = datetime.today().strftime("%Y-%m-%d")
+                conn = sqlite3.connect("journal.db")
+                cur = conn.cursor()
+                ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                c_cnt = 0
+                today_str = datetime.today().strftime("%Y-%m-%d")
+                
+                for pos in net_positions:
+                    sym = pos.get("symbol", "")
+                    qty = abs(pos.get("netQty", 0)) or abs(pos.get("qty", 0))
+                    buy_avg = pos.get("buyAvg", 0.0)
+                    sell_avg = pos.get("sellAvg", 0.0)
+                    pnl_val = pos.get("pl", 0.0)
+                    side_str = "BUY" if pos.get("side", 1) == 1 else "SELL"
                     
-                    for pos in net_positions:
-                        sym = pos.get("symbol", "")
-                        qty = abs(pos.get("netQty", 0)) or abs(pos.get("qty", 0))
-                        buy_avg = pos.get("buyAvg", 0.0)
-                        sell_avg = pos.get("sellAvg", 0.0)
-                        pnl_val = pos.get("pl", 0.0)
-                        side_str = "BUY" if pos.get("side", 1) == 1 else "SELL"
-                        
-                        cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, today_str))
-                        if not cur.fetchone() and (qty > 0 or pnl_val != 0):
-                            entry_p = buy_avg if buy_avg > 0 else sell_avg
-                            exit_p = sell_avg if sell_avg > 0 else buy_avg
-                            
-                            rule_status = "Yes (100%)"
-                            violations = []
-                            
-                            if pnl_val < 0 and abs(pnl_val) > max_risk_amt:
-                                violations.append(f"Risk Limit Crossed (Loss: ₹{abs(pnl_val):,.0f} > Max: ₹{max_risk_amt:,.0f})")
-                                rule_status = "No (Risk Violated)"
+                    cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, today_str))
+                    if not cur.fetchone() and (qty > 0 or pnl_val != 0):
+                        entry_p = buy_avg if buy_avg > 0 else sell_avg
+                        exit_p = sell_avg if sell_avg > 0 else buy_avg
+                        rule_status = "Yes (100%)"
+                        violations = []
+                        if pnl_val < 0 and abs(pnl_val) > max_risk_amt:
+                            violations.append(f"Risk Limit Crossed")
+                            rule_status = "No (Risk Violated)"
 
-                            v = (today_str, "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", rule_status, "A+", f"FYERS_AUTO_{sym} " + " | ".join(violations), "FYERS_AUTO", None)
-                            cur.execute(ins_sql, v)
-                            c_cnt += 1
-                            
-                    conn.commit()
-                    
-                    cur.execute("SELECT COUNT(*) FROM trades WHERE trade_date = ?", (today_str,))
-                    total_today_trades = cur.fetchone()[0]
-                    conn.close()
-                    
-                    audit_msg = f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા!"
-                    if total_today_trades > max_allowed_trades:
-                        audit_msg += f" ⚠️ ઓવરટ્રેડિંગ એલર્ટ: આજે તમે {max_allowed_trades} ની મર્યાદા સામે {total_today_trades} ટ્રેડ લીધા છે!"
-                    
-                    st.sidebar.warning(audit_msg)
-                    st.rerun()
+                        v = (today_str, "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", rule_status, "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
+                        cur.execute(ins_sql, v)
+                        c_cnt += 1
+                conn.commit()
+                conn.close()
+                st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા!")
+                st.rerun()
             else:
                 st.sidebar.error("Fyers API Error")
         except Exception as e:
             st.sidebar.error(str(e))
 
 st.sidebar.markdown("---")
-if st.sidebar.button("🗑️ Clear Database Records", use_container_width=True):
+if st.sidebar.button("🗑️ Clear Records", use_container_width=True):
     conn = sqlite3.connect("journal.db")
     c = conn.cursor()
     c.execute("DELETE FROM trades")
     conn.commit()
     conn.close()
-    st.sidebar.success("Records Cleared!")
+    st.sidebar.success("Cleared!")
     st.rerun()
 
 st.markdown("<div style='font-size:16px;font-weight:bold;color:#2563eb;margin-bottom:6px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
@@ -273,7 +273,7 @@ with t1:
         st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "pnl", "rule_followed", "setup_notes"]], use_container_width=True)
         st.download_button("📥 Export Journal CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
     else:
-        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Today's Trades & Audit' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
+        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Trades & Capital' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
 
 with t2:
     st.markdown("<b>🔍 Performance & Behavioral Insights</b>", unsafe_allow_html=True)
@@ -349,8 +349,6 @@ with t3:
     fig_inst.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
     st.plotly_chart(fig_inst, use_container_width=True)
 
-
-
 with t4:
     st.info("NIFTY Spot: 24,850 | INDIA VIX: 13.85 | Bias: Bullish Support at 24,800")
     s_list = [24850 + (i * 100) for i in range(-4, 5)]
@@ -362,7 +360,6 @@ with t4:
     fig_o.update_layout(barmode="group", height=240, template=plotly_template)
     st.plotly_chart(fig_o, use_container_width=True)
 
-
 with t5:
     st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
     st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો.")
@@ -370,14 +367,4 @@ with t5:
     default_rules_text = get_db_val("custom_trading_rules") or (
         "1. Never take a revenge trade after a loss.\n"
         "2. Always respect predefined Stop Loss.\n"
-        "3. Wait patiently for liquidity sweeps/Order blocks.\n"
-        "4. Stop trading for the day after hitting Daily Max Loss."
-    )
-    
-    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
-    
-    if st.button("Save & Update Rules"):
-        set_db_val("custom_trading_rules", edited_rules)
-        st.success("તમારા નિયમો સફળતાપૂર્વક અપડેટ અને સેવ થઈ ગયા છે!")
-
-
+        "3. Wait patiently for liquidity sweeps
