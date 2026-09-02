@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -297,7 +296,6 @@ with t2:
 with t3:
     st.markdown("<b>🏦 Participant-wise Open Interest & Excel Summary Matrix (Custom Sheet Layout)</b>", unsafe_allow_html=True)
     
-    # Verdict Box matching user photo request
     st.markdown("""
     <div style="background-color:#1e293b; padding: 14px; border-radius: 8px; border-left: 5px solid #2563eb; margin-bottom: 15px;">
         <h4 style="color:#38bdf8; margin:0 0 6px 0;">⚡ Smart Money Trend & Summary Matrix:</h4>
@@ -318,7 +316,7 @@ with t3:
     excel_sheet_data = [
         {"Participant Group": "Clients (Retail)", "Instrument": "Stock Futures", "Today": "-2,556", "1 Day Ago": "31,693", "2 Days Ago": "112,827", "Net Change": "-2,556", "Summary / Action": "sold net", "Bias": "bearish"},
         {"Participant Group": "Clients (Retail)", "Instrument": "Index Futures", "Today": "46", "1 Day Ago": "-156,950", "2 Days Ago": "-158,184", "Net Change": "46", "Summary / Action": "sold net", "Bias": "bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Calls", "Today": "1,234", "1 Day Ago": "12,430", "2 Days Ago": "11,062", "Net Change": "1,234", "Summary / Action": "sold net", "Bias": "bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Calls", "Today": "1,234", "1 Day Ago": "12,430", "D Days Ago": "11,062", "Net Change": "1,234", "Summary / Action": "sold net", "Bias": "bearish"},
         {"Participant Group": "Clients (Retail)", "Instrument": "Index Puts", "Today": "1,368", "1 Day Ago": "-1,042", "2 Days Ago": "-425", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bearish"},
         
         {"Participant Group": "FII", "Instrument": "Stock Futures", "Today": "44,831", "1 Day Ago": "143,821", "2 Days Ago": "-46,475", "Net Change": "31,092", "Summary / Action": "bought net", "Bias": "bullish"},
@@ -327,7 +325,7 @@ with t3:
         {"Participant Group": "FII", "Instrument": "Index Puts", "Today": "-32,608", "1 Day Ago": "135,315", "2 Days Ago": "124,094", "Net Change": "-32,608", "Summary / Action": "bought net", "Bias": "bearish"},
 
         {"Participant Group": "Pros", "Instrument": "Stock Futures", "Today": "2,019", "1 Day Ago": "168,384", "2 Days Ago": "24,774", "Net Change": "2,019", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Futures", "Today": "1,368", "1 Day Ago": "228,577", "D Days Ago": "226,335", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Futures", "Today": "1,368", "1 Day Ago": "228,577", "2 Days Ago": "226,335", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bullish"},
         {"Participant Group": "Pros", "Instrument": "Index Calls", "Today": "159,906", "1 Day Ago": "64,753", "2 Days Ago": "27,207", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "bullish"},
         {"Participant Group": "Pros", "Instrument": "Index Puts", "Today": "2,242", "1 Day Ago": "57,325", "2 Days Ago": "65,365", "Net Change": "2,242", "Summary / Action": "bought net", "Bias": "bearish"},
 
@@ -361,4 +359,5 @@ with t4:
     fig_o = go.Figure()
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Call OI"], name="Call OI", marker_color="#f43f5e"))
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Put OI"], name="Put OI", marker_color="#10b981"))
-    fig_o.update_layout(barmode="group", height=240, template=plotly_template, margin=dict(l=10
+    fig_o.update_layout(barmode="group", height=240, template=plotly_template, margin=dict(l=10, r=10, t=30, b=10))
+    st.plotly_chart(fig_o
