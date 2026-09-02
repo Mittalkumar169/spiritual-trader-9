@@ -1,5 +1,19 @@
 
 import streamlit as st
+
+# 🔒 કાયમી ફિક્સ અને લૉક કરેલા નિયમો (કોઈ ક્યારેય બદલી નહીં શકે)
+FIXED_MAX_TRADES = 3
+FIXED_MAX_LOSS = 1500.0
+FIXED_RISK_PERCENT = 3.0
+
+# ઇન્ટરફેસ પર માત્ર ફિક્સ આંકડા જ દેખાશે, કોઈ એડિટિંગ બોક્સ કે બટન નહીં હોય
+st.subheader("🔒 તમારા ફિક્સ રિસ્ક નિયમો (કાયમ માટે લૉક)")
+st.write(f"📌 **મેક્સ ટ્રેડ:** {FIXED_MAX_TRADES}")
+st.write(f"📌 **મેક્સ લોસ:** ₹{FIXED_MAX_LOSS}")
+st.write(f"📌 **રિસ્ક પર્સન્ટ:** {FIXED_RISK_PERCENT}%")
+
+
+import streamlit as st
 import json
 import os
 
