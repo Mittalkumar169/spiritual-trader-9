@@ -79,6 +79,7 @@ def init_db():
     c = conn.cursor()
     c.execute("CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY AUTOINCREMENT, trade_date TEXT, session TEXT, timeframe TEXT, symbol TEXT, trade_type TEXT, quantity INTEGER, entry_price REAL, exit_price REAL, stop_loss REAL, target_price REAL, risk_reward REAL, pnl REAL, setup_type TEXT, entry_emotion TEXT, exit_reason TEXT, rule_followed TEXT, trade_grade TEXT, setup_notes TEXT, execution_type TEXT DEFAULT 'MANUAL', chart_img TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, val TEXT)")
+    c.execute("CREATE TABLE IF NOT EXISTS daily_journal (trade_date TEXT PRIMARY KEY, notes TEXT)")
     try:
         c.execute("ALTER TABLE trades ADD COLUMN chart_img TEXT")
     except sqlite3.OperationalError:
@@ -87,25 +88,6 @@ def init_db():
     conn.close()
 
 init_db()
-
-# ગ્લોબલ ફંક્શન્સ (એરર વગર જર્નલ સેવ અને લોડ કરવા માટે)
-def load_daily_notes():
-    JOURNAL_TEXT_FILE = "daily_notes.json"
-    if os.path.exists(JOURNAL_TEXT_FILE):
-        try:
-            with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
-                content = f.read()
-                if not content.strip():
-                    return {}
-                return json.loads(content)
-        except:
-            return {}
-    return {}
-
-def save_daily_notes(notes_dict):
-    JOURNAL_TEXT_FILE = "daily_notes.json"
-    with open(JOURNAL_TEXT_FILE, "w", encoding="utf-8") as f:
-        json.dump(notes_dict, f, indent=4)
 
 def get_db_val(k):
     conn = sqlite3.connect("journal.db")
@@ -300,26 +282,36 @@ with t1:
     st.markdown("---")
     st.subheader("📖 Daily Trading Journal & Psychology Notes")
 
-    all_notes = load_daily_notes()
+    today_date_str = str(datetime.today().date())
+    st.write(f"📅 **Date:** {today_date_str}")
 
-    today_date = str(datetime.today().date())
-    st.write(f"📅 **Date:** {today_date}")
-    existing_note = all_notes.get(today_date, "")
+    # ડેટાબેઝમાંથી આજની નોટ લોડ કરવી
+    conn = sqlite3.connect("journal.db")
+    cur = conn.cursor()
+    cur.execute("SELECT notes FROM daily_journal WHERE trade_date = ?", (today_date_str,))
+    row = cur.fetchone()
+    conn.close()
+    existing_note = row[0] if row else ""
 
     user_daily_note = st.text_area("How was the market today? Write about your fear, greed, or psychology here (30-50 words):", value=existing_note, height=120)
 
     if st.button("💾 Save Today's Journal"):
-        all_notes[today_date] = user_daily_note
-        save_daily_notes(all_notes)
-        st.success("✅ Today's journal notes saved successfully!")
+        conn = sqlite3.connect("journal.db")
+        cur = conn.cursor()
+        cur.execute("INSERT OR REPLACE INTO daily_journal (trade_date, notes) VALUES (?, ?)", (today_date_str, user_daily_note))
+        conn.commit()
+        conn.close()
+        st.success("✅ Today's journal notes saved successfully in database!")
 
     st.markdown("---")
     st.markdown("### 📈 Weekly & Monthly Trading Performance")
 
-    if os.path.exists("daily_notes.json") and len(all_notes) > 0:
-        notes_df = pd.DataFrame(list(all_notes.items()), columns=["Date", "Notes"])
+    conn = sqlite3.connect("journal.db")
+    notes_df = pd.read_sql_query("SELECT trade_date as Date, notes as Notes FROM daily_journal ORDER BY trade_date DESC", conn)
+    conn.close()
+
+    if not notes_df.empty:
         notes_df["Date"] = pd.to_datetime(notes_df["Date"])
-        
         notes_df["Month"] = notes_df["Date"].dt.strftime('%Y-%m')
         notes_df["Week"] = notes_df["Date"].dt.isocalendar().week
 
