@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -99,7 +98,6 @@ def set_db_val(k, v):
     conn.commit()
     conn.close()
 
-# Robust Profile Photo State Handler
 if "profile_pic_b64" not in st.session_state:
     st.session_state["profile_pic_b64"] = get_db_val("profile_pic")
 
@@ -115,17 +113,18 @@ with col_p2:
     st.markdown("<div style='font-weight:bold;font-size:12px;padding-top:8px;'>Mittalkumar M.</div>", unsafe_allow_html=True)
 
 with st.sidebar.expander("📷 Edit Profile Photo", expanded=False):
-    up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="p_uploader_v2")
-    if up_img is not None:
-        try:
-            bytes_data = up_img.getvalue()
-            b64_data = base64.b64encode(bytes_data).decode()
-            st.session_state["profile_pic_b64"] = b64_data
-            set_db_val("profile_pic", b64_data)
-            st.success("Photo Uploaded Successfully!")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error: {e}")
+    with st.form("photo_upload_form", clear_on_submit=True):
+        up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"])
+        submitted = st.form_submit_button("Upload & Save", use_container_width=True)
+        if submitted and up_img is not None:
+            try:
+                b64_data = base64.b64encode(up_img.read()).decode()
+                st.session_state["profile_pic_b64"] = b64_data
+                set_db_val("profile_pic", b64_data)
+                st.success("ફોટો સફળતાપૂર્વક અપલોડ થઈ ગયો!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<b>⚡ Fyers Live Connect</b>", unsafe_allow_html=True)
@@ -292,15 +291,19 @@ with t4:
     st.plotly_chart(fig_o, use_container_width=True)
 
 with t5:
-    st.markdown("<b>🛡️ AI & Custom Trading Rules Validator</b>", unsafe_allow_html=True)
-    st.write("આ સેクションમાં તમારા ટ્રેડિંગ રૂલ્સ સેટ કરો, જેથી તમે ચકાસી શકો કે ટ્રેડ વખતે નિયમ પળાયો કે નહીં:")
+    st.markdown("<b>🛡️ AI & Custom Trading Rules Editor</b>", unsafe_allow_html=True)
+    st.write("તમારા ટ્રેડિંગ નિયમો નીચે એડિટ કરો, બદલો અથવા નવા ઉમેરો:")
     
-    rule1 = st.checkbox("Rule 1: Never take a revenge trade after a loss.", value=True)
-    rule2 = st.checkbox("Rule 2: Always respect predefined Stop Loss.", value=True)
-    rule3 = st.checkbox("Rule 3: Wait patiently for liquidity sweeps/Order blocks.", value=True)
-    rule4 = st.checkbox("Rule 4: Stop trading for the day after hitting Daily Max Loss.", value=True)
+    default_rules_text = get_db_val("custom_trading_rules") or (
+        "1. Never take a revenge trade after a loss.\n"
+        "2. Always respect predefined Stop Loss.\n"
+        "3. Wait patiently for liquidity sweeps/Order blocks.\n"
+        "4. Stop trading for the day after hitting Daily Max Loss."
+    )
     
-    custom_rule = st.text_input("Add your custom trading rule:", placeholder="જેમ કે: 1:2 R:R વગર એન્ટ્રી ન લેવી")
-    if st.button("Save Rules"):
-        st.success("તમારા ટ્રેડિંગ રૂલ્સ સેવ થઈ ગયા છે!")
+    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
+    
+    if st.button("Save & Update Rules"):
+        set_db_val("custom_trading_rules", edited_rules)
+        st.success("તમારા નિયમો સફળતાપૂર્વક અપડેટ અને સેવ થઈ ગયા છે!")
 
