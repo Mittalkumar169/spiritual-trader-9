@@ -4,4 +4,4 @@ pandas
 plotly
 requests
 pillow
-
+fyres-apv3
