@@ -2,6 +2,100 @@
 import json
 import os
 
+# ====================================================
+# 🔒 સેફ એડિટેબલ લૉક મેનેજર (સૌથી ઉપર મૂકવું)
+# ====================================================
+class SafeEditableLock:
+    def __init__(self, filename="user_locked_settings.json"):
+        self.filename = filename
+        self.settings = self.__load_settings()
+
+    def __load_settings(self):
+        if os.path.exists(self.filename):
+            with open(self.filename, "r", encoding="utf-8") as f:
+                return json.load(f)
+        else:
+            # પહેલીવારના ડિફોલ્ટ સેટિંગ્સ
+            default_settings = {
+                "max_trades": 3,
+                "max_loss": 1500.0,
+                "risk_percent": 3.0
+            }
+            self.__save_to_file(default_settings)
+            return default_settings
+
+    def __save_to_file(self, data):
+        with open(self.filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+
+    def update_settings(self, new_max_trades, new_max_loss, new_risk_percent):
+        """ જ્યારે તમે જાતે એડિટ કરવા માંગો ત્યારે જ આ ફંક્શન રન કરવાનું """
+        self.settings["max_trades"] = new_max_trades
+        self.settings["max_loss"] = new_max_loss
+        self.settings["risk_percent"] = new_risk_percent
+        
+        self.__save_to_file(self.settings)
+        print("✅ સેટિંગ્સ સફળતાપૂર્વક એડિટ અને સેવ થઈ ગયા છે!")
+
+    @property
+    def max_trades(self): return self.settings["max_trades"]
+    @property
+    def max_loss(self): return self.settings["max_loss"]
+    @property
+    def risk_percent(self): return self.settings["risk_percent"]
+
+# ઓબ્જેક્ટ ક્રિએટ કરો
+locked_config = SafeEditableLock()
+
+
+# ====================================================
+# 📊 સાંજે ટ્રેડ સિંક કરતી વખતે ભૂલો ચેક કરવાનો રિપોર્ટ
+# ====================================================
+def evening_trade_audit_report(journal_file_path="trade_journal.json"):
+    if not os.path.exists(journal_file_path):
+        print("📭 આજની ટ્રેડ જર્નલ ફાઇલ મળી નથી.")
+        return
+
+    try:
+        with open(journal_file_path, "r", encoding="utf-8") as f:
+            trades = json.load(f)
+    except:
+        trades = []
+
+    total_trades = len(trades)
+    total_pnl = sum(t.get('pnl', 0) for t in trades)
+
+    print("\n========================================")
+    print(" 📊 સાંજનું ટ્રેડ ઓડિટ રિપોર્ટ ")
+    print("========================================")
+    print(f"🔒 [હાલના લૉક નિયમો] મેક્સ ટ્રેડ: {locked_config.max_trades} | મેક્સ લોસ: ₹{locked_config.max_loss} | રિસ્ક: {locked_config.risk_percent}%")
+    
+    if total_trades > locked_config.max_trades:
+        print(f"⚠️ ભૂલ: તમે ફિક્સ લિમિટ ({locked_config.max_trades}) કરતાં વધારે ટ્રેડ કર્યા છે! કુલ: {total_trades}")
+    else:
+        print(f"✅ ટ્રેડ કાઉન્ટ સેફ છે ({total_trades}/{locked_config.max_trades}).")
+
+    mistake_found = False
+    for i, trade in enumerate(trades, 1):
+        risk_pct = trade.get('risk_percent', 0)
+        if risk_pct > locked_config.risk_percent:
+            print(f"⚠️ ભૂલ [ટ્રેડ #{i}]: આ ટ્રેડમાં રિસ્ક ({risk_pct}%) લૉક મર્યાદા કરતા વધારે હતું!")
+            mistake_found = True
+
+    if total_pnl <= -locked_config.max_loss:
+        print(f"⚠️ ભૂલ: આજનું કુલ નુકસાન લૉક કરેલા મેક્સ લોસ વટાવી ગયું છે!")
+        mistake_found = True
+
+    if not mistake_found and total_trades <= locked_config.max_trades:
+        print("🌟 ખૂબ સરસ! આજે તમે બધા લૉક કરેલા નિયમો પાળ્યા છે.")
+
+    print(f"💰 આજનું કુલ P&L: ₹{total_pnl}")
+    print("========================================\n")
+
+
+import json
+import os
+
 def evening_trade_audit_report(file_path="trade_journal.json"):
     # आपके फिक्स किए हुए नियम (हार्डકોડેડ)
     MAX_TRADES = 3
