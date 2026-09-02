@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -294,7 +295,69 @@ with t2:
         st.info("એનાલિટિક્સ જોવા માટે પહેલાં Fyers માંથી ટ્રેડ્સ સિંક કરો.")
 
 with t3:
-    st.info("NSE Participant Positioning (FII vs DII vs Retail)")
+    st.markdown("<b>🏦 NSE Participant OI & Full Derivative Flow (Smart Money Tracking)</b>", unsafe_allow_html=True)
+    st.write("તમારા ફોટા મુજબ FII, DII, Pro અને Client (Retail) ના ઇન્ડેક્સ ફ્યુચર્સ, કોલ્સ, પુટ્સ અને સ્ટોક ફ્યુચર્સની સંપૂર્ણ વિગતો:")
+    
+    full_inst_data = [
+        {
+            "Participant": "FII",
+            "Idx Fut Longs": "1,35,314",
+            "Idx Fut Shorts": "1,35,315",
+            "Idx Fut Net": "-1",
+            "Idx Calls Long": "4,95,729",
+            "Idx Calls Short": "5,401",
+            "Idx Calls Net": "+4,90,328",
+            "Idx Puts Long": "1,66,995",
+            "Idx Puts Short": "6,57,323",
+            "Idx Puts Net": "-4,90,328",
+            "Stock Fut Net": "+1,18,000",
+            "Bias": "🟢 Strong Bullish"
+        },
+        {
+            "Participant": "DII",
+            "Idx Fut Longs": "24,850",
+            "Idx Fut Shorts": "46",
+            "Idx Fut Net": "+24,804",
+            "Idx Calls Long": "0",
+            "Idx Calls Short": "0",
+            "Idx Calls Net": "0",
+            "Idx Puts Long": "0",
+            "Idx Puts Short": "0",
+            "Idx Puts Net": "0",
+            "Stock Fut Net": "+28,900",
+            "Bias": "🟢 Bullish Longs"
+        },
+        {
+            "Participant": "Pro",
+            "Idx Fut Longs": "1,24,094",
+            "Idx Fut Shorts": "1,042",
+            "Idx Fut Net": "+1,23,052",
+            "Idx Calls Long": "8,355",
+            "Idx Calls Short": "1,93,864",
+            "Idx Calls Net": "-1,85,509",
+            "Idx Puts Long": "27,207",
+            "Idx Puts Short": "1,64,753",
+            "Idx Puts Net": "-1,37,546",
+            "Stock Fut Net": "-15,000",
+            "Bias": "🟡 Hedged/Neutral"
+        },
+        {
+            "Participant": "Client (Retail)",
+            "Idx Fut Longs": "2,865",
+            "Idx Fut Shorts": "1,832",
+            "Idx Fut Net": "+1,033",
+            "Idx Calls Long": "2,855",
+            "Idx Calls Short": "1,93,864",
+            "Idx Calls Net": "-1,91,009",
+            "Idx Puts Long": "657,323",
+            "Idx Puts Short": "3,181",
+            "Idx Puts Net": "+6,54,142",
+            "Stock Fut Net": "-95,000",
+            "Bias": "🔴 Bearish (Trapped)"
+        }
+    ]
+    st.dataframe(pd.DataFrame(full_inst_data), use_container_width=True)
+
     d_list = [(datetime.today() - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
     inst_records = [
         {"Date": d_list[0], "Client Type": "Retail", "Net Sentiment": -51100},
@@ -307,7 +370,7 @@ with t3:
         {"Date": d_list[2], "Client Type": "DII", "Net Sentiment": 28900},
         {"Date": d_list[2], "Client Type": "FII", "Net Sentiment": 118000}
     ]
-    fig_inst = px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group")
+    fig_inst = px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group", title="3-Day Participant Net Sentiment Flow")
     fig_inst.update_layout(template=plotly_template, height=240, margin=dict(l=10, r=10, t=30, b=10))
     st.plotly_chart(fig_inst, use_container_width=True)
 
