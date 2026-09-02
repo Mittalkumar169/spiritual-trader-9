@@ -1,4 +1,5 @@
 
+import base64
 import io
 import os
 import sqlite3
@@ -10,6 +11,10 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
+# ==============================================================================
+# 🚀 SPIRITUAL TRADER PRO - MASTER TERMINAL WITH USER PROFILE PHOTO
+# ==============================================================================
+
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
     page_icon="⚡",
@@ -18,45 +23,42 @@ st.set_page_config(
 )
 
 # ------------------------------------------------------------------------------
-# 🎨 ULTRA-TIGHT OBSIDIAN CSS (ZERO EMPTY SPACE)
+# 🎨 OBSIDIAN PRO DARK THEME
 # ------------------------------------------------------------------------------
 st.markdown("""
 <style>
     .block-container {
-        padding-top: 0.3rem !important;
-        padding-bottom: 0.3rem !important;
-        padding-left: 0.6rem !important;
-        padding-right: 0.6rem !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.8rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
         max-width: 100% !important;
     }
     .stApp { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
     section[data-testid="stSidebar"] { 
         background-color: #111827 !important; 
         border-right: 1px solid #1f2937;
-        padding-top: 0.3rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
     }
     div[data-testid="stMetric"] {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
         border: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 5px 8px !important;
-        border-radius: 6px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        padding: 8px 12px !important;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
-    div[data-testid="stMetricLabel"] p { font-size: 11px !important; font-weight: 600; text-transform: uppercase; color: #94a3b8 !important; margin: 0; }
-    div[data-testid="stMetricValue"] div { font-size: 17px !important; font-weight: 700; }
-    .stTabs [data-baseweb="tab-list"] { gap: 3px; margin-bottom: 4px; }
+    div[data-testid="stMetricLabel"] p { font-size: 11.5px !important; font-weight: 600; text-transform: uppercase; color: #94a3b8 !important; }
+    div[data-testid="stMetricValue"] div { font-size: 18px !important; font-weight: 700; }
+    .stTabs [data-baseweb="tab-list"] { gap: 6px; margin-bottom: 8px; }
     .stTabs [data-baseweb="tab"] {
-        height: 30px; border-radius: 4px; color: #94a3b8; background-color: #161f30;
-        border: 1px solid #1f2937; font-weight: 600; padding: 0 8px; font-size: 11.5px;
+        height: 36px; border-radius: 6px; color: #94a3b8; background-color: #161f30;
+        border: 1px solid #1f2937; font-weight: 600; padding: 0 14px; font-size: 12.5px;
     }
     .stTabs [aria-selected="true"] {
         background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
         color: #ffffff !important; border: 1px solid #60a5fa !important;
     }
     input, select, textarea { background-color: #1e293b !important; color: #f8fafc !important; border: 1px solid #334155 !important; }
-    hr { margin: 5px 0 !important; border-color: #1f2937 !important; }
+    hr { margin: 8px 0 !important; border-color: #1f2937 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -74,10 +76,10 @@ def check_password():
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("""
-        <div style="background:#111827; padding:20px; border-radius:10px; border:1px solid #38bdf8; text-align:center;">
-            <span style="font-size:30px;">⚡</span>
-            <h3 style="color:#f8fafc; margin:4px 0;">Spiritual Trader Pro</h3>
-            <p style="color:#94a3b8; font-size:12px;">Institutional Terminal Login</p>
+        <div style="background:#111827; padding:25px; border-radius:12px; border:1px solid #38bdf8; text-align:center;">
+            <span style="font-size:35px;">⚡</span>
+            <h3 style="color:#f8fafc; margin:6px 0;">Spiritual Trader Pro</h3>
+            <p style="color:#94a3b8; font-size:13px;">Institutional Terminal Login</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -125,7 +127,14 @@ def init_db():
             rule_followed TEXT,
             trade_grade TEXT,
             setup_notes TEXT,
-            execution_type TEXT DEFAULT 'FYERS_API'
+            execution_type TEXT DEFAULT 'MANUAL',
+            chart_img TEXT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            val TEXT
         )
     """)
     conn.commit()
@@ -133,49 +142,105 @@ def init_db():
 
 init_db()
 
+def get_profile_photo():
+    conn = sqlite3.connect("journal.db")
+    c = conn.cursor()
+    c.execute("SELECT val FROM settings WHERE key = 'profile_pic'")
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def save_profile_photo(b64_str):
+    conn = sqlite3.connect("journal.db")
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO settings (key, val) VALUES ('profile_pic', ?)", (b64_str,))
+    conn.commit()
+    conn.close()
+
 # ------------------------------------------------------------------------------
-# 🏦 DATA HELPERS
+# 🏦 NSE INSTITUTIONAL DATA & OPTION CHAIN LOGIC
 # ------------------------------------------------------------------------------
 def get_participant_data():
     today = datetime.today()
     dates = [(today - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
     records = [
-        {"Date": dates[0], "Client Type": "Client", "Net Sentiment Score": -51100},
-        {"Date": dates[0], "Client Type": "DII", "Net Sentiment Score": 21200},
-        {"Date": dates[0], "Client Type": "FII", "Net Sentiment Score": 85000},
-        {"Date": dates[0], "Client Type": "Pro", "Net Sentiment Score": 33000},
-        {"Date": dates[1], "Client Type": "Client", "Net Sentiment Score": -71000},
-        {"Date": dates[1], "Client Type": "DII", "Net Sentiment Score": 24500},
-        {"Date": dates[1], "Client Type": "FII", "Net Sentiment Score": 98000},
-        {"Date": dates[1], "Client Type": "Pro", "Net Sentiment Score": 42000},
-        {"Date": dates[2], "Client Type": "Client", "Net Sentiment Score": -95000},
-        {"Date": dates[2], "Client Type": "DII", "Net Sentiment Score": 28900},
-        {"Date": dates[2], "Client Type": "FII", "Net Sentiment Score": 118000},
-        {"Date": dates[2], "Client Type": "Pro", "Net Sentiment Score": 50100},
+        {"Date": dates[0], "Client Type": "Client (Retail)", "Net Future": -24100, "Net Calls": -12000, "Net Puts": 15000, "Net Sentiment": -51100},
+        {"Date": dates[0], "Client Type": "DII", "Net Future": 14200, "Net Calls": 5000, "Net Puts": -2000, "Net Sentiment": 21200},
+        {"Date": dates[0], "Client Type": "FII", "Net Future": 42000, "Net Calls": 31000, "Net Puts": -12000, "Net Sentiment": 85000},
+        {"Date": dates[0], "Client Type": "Pro", "Net Future": 12000, "Net Calls": 15000, "Net Puts": -6000, "Net Sentiment": 33000},
+        
+        {"Date": dates[1], "Client Type": "Client (Retail)", "Net Future": -31000, "Net Calls": -18000, "Net Puts": 22000, "Net Sentiment": -71000},
+        {"Date": dates[1], "Client Type": "DII", "Net Future": 16500, "Net Calls": 6200, "Net Puts": -1800, "Net Sentiment": 24500},
+        {"Date": dates[1], "Client Type": "FII", "Net Future": 48000, "Net Calls": 36000, "Net Puts": -14000, "Net Sentiment": 98000},
+        {"Date": dates[1], "Client Type": "Pro", "Net Future": 15500, "Net Calls": 18500, "Net Puts": -8000, "Net Sentiment": 42000},
+        
+        {"Date": dates[2], "Client Type": "Client (Retail)", "Net Future": -42000, "Net Calls": -24000, "Net Puts": 29000, "Net Sentiment": -95000},
+        {"Date": dates[2], "Client Type": "DII", "Net Future": 19000, "Net Calls": 7800, "Net Puts": -2100, "Net Sentiment": 28900},
+        {"Date": dates[2], "Client Type": "FII", "Net Future": 56000, "Net Calls": 44000, "Net Puts": -18000, "Net Sentiment": 118000},
+        {"Date": dates[2], "Client Type": "Pro", "Net Future": 18200, "Net Calls": 22400, "Net Puts": -9500, "Net Sentiment": 50100},
     ]
     return pd.DataFrame(records)
 
-def get_active_option_chain(symbol="NIFTY"):
-    spot = 24850.0 if symbol == "NIFTY" else 52400.0
-    strikes = [spot + (i * 100) for i in range(-6, 7)]
+def get_active_option_chain():
+    spot = 24850.0
+    strikes = [spot + (i * 100) for i in range(-5, 6)]
     rows = []
     vix = 13.85
     for s in strikes:
         diff = s - spot
-        ce_oi = max(1200, int((600 - diff) * 180))
-        pe_oi = max(1100, int((600 + diff) * 210))
-        ce_ltp = max(5.0, round(280.0 - (diff * 0.55), 1))
-        pe_ltp = max(5.0, round(260.0 + (diff * 0.52), 1))
-        rows.append({"CE LTP": ce_ltp, "CE OI": ce_oi, "Strike": int(s), "PE OI": pe_oi, "PE LTP": pe_ltp})
+        ce_oi = max(1800, int((550 - diff) * 230))
+        pe_oi = max(1600, int((550 + diff) * 260))
+        ce_ltp = max(8.0, round(270.0 - (diff * 0.54), 1))
+        pe_ltp = max(8.0, round(250.0 + (diff * 0.51), 1))
+        rows.append({
+            "CE LTP (₹)": ce_ltp, "Call OI": ce_oi, "Strike Price": int(s),
+            "Put OI": pe_oi, "PE LTP (₹)": pe_ltp
+        })
     return pd.DataFrame(rows), spot, vix
 
 # ------------------------------------------------------------------------------
-# 🛡️ SIDEBAR: RISK CONTROL & FYERS DIRECT REST API SYNC
+# 👤 SIDEBAR: USER PROFILE & SETTINGS
 # ------------------------------------------------------------------------------
-st.sidebar.markdown("<h4 style='color:#38bdf8; margin:0;'>🛡️ Risk Shield & Limits</h4>", unsafe_allow_html=True)
+profile_img_data = get_profile_photo()
+
+st.sidebar.markdown("<div style='text-align: center; margin-bottom: 10px;'>", unsafe_allow_html=True)
+if profile_img_data:
+    st.sidebar.markdown(f"""
+    <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+        <img src="data:image/png;base64,{profile_img_data}" style="width: 85px; height: 85px; border-radius: 50%; border: 2px solid #38bdf8; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.sidebar.markdown("""
+    <div style="display: flex; justify-content: center; margin-bottom: 8px;">
+        <div style="width: 85px; height: 85px; border-radius: 50%; background: #1e293b; border: 2px solid #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 36px;">👤</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.sidebar.markdown("""
+<div style="text-align: center;">
+    <div style="font-weight: 700; font-size: 15px; color: #f8fafc;">Lead Institutional Trader</div>
+    <div style="font-size: 11px; color: #10b981; font-weight: 600;">● PRO TRADER (VERIFIED)</div>
+</div>
+""", unsafe_allow_html=True)
+
+with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
+    up_photo = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"], key="prof_pic_input")
+    if up_photo is not None:
+        b64_p = base64.b64encode(up_photo.read()).decode()
+        save_profile_photo(b64_p)
+        st.success("Profile photo updated!")
+        st.rerun()
+
+st.sidebar.markdown("---")
+
+# 🛡️ RISK SHIELD & FYERS SYNC
+st.sidebar.markdown("<h4 style='color:#38bdf8; margin:0;'>🛡️ Capital & Risk Shield</h4>", unsafe_allow_html=True)
 user_capital = st.sidebar.number_input("Total Capital (₹)", min_value=10000.0, value=100000.0, step=5000.0)
 risk_pct = st.sidebar.slider("Max Risk Per Trade (%)", 0.5, 3.0, 1.5, 0.25)
+daily_max_loss = st.sidebar.number_input("Daily Stop Loss Limit (₹)", min_value=1000.0, value=4000.0, step=500.0)
 max_risk_rupees = (user_capital * risk_pct) / 100.0
+st.sidebar.caption(f"Allowed Risk: **₹{max_risk_rupees:,.0f}** | Daily Loss: **₹{daily_max_loss:,.0f}**")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h4 style='color:#10b981; margin:0;'>⚡ Fyers Live Connect</h4>", unsafe_allow_html=True)
@@ -183,10 +248,9 @@ st.sidebar.markdown("<h4 style='color:#10b981; margin:0;'>⚡ Fyers Live Connect
 f_app_id = st.sidebar.text_input("Fyers App ID", placeholder="e.g. XC12345-100")
 f_token = st.sidebar.text_input("Access Token", type="password", placeholder="Enter Daily Token")
 
-if st.sidebar.button("🔄 Sync Trades", use_container_width=True):
+if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
     if f_app_id and f_token:
         try:
-            # Direct REST API call without external wrapper dependency
             url = "https://api-t1.fyers.in/api/v3/tradebook"
             headers = {"Authorization": f"{f_app_id}:{f_token}"}
             res = requests.get(url, headers=headers)
@@ -203,30 +267,28 @@ if st.sidebar.button("🔄 Sync Trades", use_container_width=True):
                     for t in trades:
                         c.execute("SELECT id FROM trades WHERE setup_notes = ?", (str(t.get("tradeId")),))
                         if not c.fetchone():
-                            symbol = t.get("symbol", "")
-                            qty = t.get("tradedQty", 0)
-                            price = t.get("tradePrice", 0.0)
-                            trade_type = "BUY" if t.get("side") == 1 else "SELL"
                             c.execute("""
                                 INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity,
                                                     entry_price, exit_price, stop_loss, target_price, risk_reward,
                                                     pnl, setup_type, entry_emotion, exit_reason, rule_followed,
-                                                    trade_grade, setup_notes, execution_type)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", symbol, trade_type,
-                                  qty, price, price, 0.0, 0.0, 0.0, 0.0,
-                                  "Order Block (OB)", "Disciplined", "API Synced", "Yes (100%)", "A+", str(t.get("tradeId")), "FYERS_AUTO"))
+                                                    trade_grade, setup_notes, execution_type, chart_img)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", t.get("symbol", ""),
+                                  "BUY" if t.get("side") == 1 else "SELL", t.get("tradedQty", 0),
+                                  t.get("tradePrice", 0.0), t.get("tradePrice", 0.0), 0.0, 0.0, 0.0, 0.0,
+                                  "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+",
+                                  str(t.get("tradeId")), "FYERS_AUTO", None))
                             added += 1
                     conn.commit()
                     conn.close()
-                    st.sidebar.success(f"✅ {added} નવા ટ્રેડ સિંક થયા!")
+                    st.sidebar.success(f"✅ {added} નવા ટ્રેડ જર્નલમાં સિંક થયા!")
                     st.rerun()
             else:
                 st.sidebar.error("Fyers API Error: " + data.get("message", "Invalid Token"))
         except Exception as e:
             st.sidebar.error(f"Error: {str(e)}")
     else:
-        st.sidebar.warning("App ID અને Access Token દાખલ કરો.")
+        st.sidebar.warning("App ID અને Access Token બંને દાખલ કરો.")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h4 style='color:#f43f5e; margin:0;'>🗑️ Maintenance</h4>", unsafe_allow_html=True)
@@ -240,19 +302,28 @@ if st.sidebar.button("Clear All Stored Records", use_container_width=True):
     st.rerun()
 
 # ------------------------------------------------------------------------------
-# 💻 MAIN TERMINAL
+# 💻 TOP COMPACT TERMINAL HEADER
 # ------------------------------------------------------------------------------
 st.markdown("""
-<div style="display:flex; justify-content:space-between; align-items:center; background:#111827; padding:5px 10px; border-radius:6px; border:1px solid #1f2937; margin-bottom:6px;">
-    <div style="font-weight:700; font-size:15px; color:#38bdf8;">⚡ SPIRITUAL TRADER PRO TERMINAL</div>
-    <div style="color:#94a3b8; font-size:11px;">Direct Fyers Bridge • Zero Latency Matrix</div>
+<div style="display:flex; justify-content:space-between; align-items:center; background:#111827; padding:6px 12px; border-radius:6px; border:1px solid #1f2937; margin-bottom:8px;">
+    <div style="font-weight:700; font-size:16px; color:#38bdf8;">⚡ SPIRITUAL TRADER PRO TERMINAL</div>
+    <div style="color:#94a3b8; font-size:12px;">Institutional Matrix • Option Chain Radar • Fyers Direct Bridge</div>
 </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Comprehensive Journal", "🏦 Smart Money Flow", "🔥 Live Option Chain", "⚡ 1-Click Execution", "🤖 AI Coach"
+# ------------------------------------------------------------------------------
+# 📑 6 FULL COMPLETE TABS
+# ------------------------------------------------------------------------------
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📊 Comprehensive Journal & Analytics",
+    "⚡ New Trade Execution / Fast Log",
+    "🏦 Institutional Smart Money Flow (NSE 3-Day)",
+    "🔥 Live Option Chain & VIX Radar",
+    "🔍 Advanced Performance Analysis",
+    "🤖 AI Assistant"
 ])
 
+# ==================== TAB 1: JOURNAL & ANALYTICS ====================
 with tab1:
     conn = sqlite3.connect("journal.db")
     df = pd.read_sql_query("SELECT * FROM trades ORDER BY trade_date ASC, id ASC", conn)
@@ -261,40 +332,76 @@ with tab1:
     total_trades = len(df)
     total_pnl = df["pnl"].sum() if total_trades > 0 else 0.0
     win_trades = len(df[df["pnl"] > 0]) if total_trades > 0 else 0
+    loss_trades = len(df[df["pnl"] < 0]) if total_trades > 0 else 0
     win_rate = (win_trades / total_trades) * 100 if total_trades > 0 else 0.0
+    avg_rr = df["risk_reward"].mean() if (total_trades > 0 and "risk_reward" in df) else 0.0
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Total Trades", f"{total_trades}")
     c2.metric("Net P&L (₹)", f"₹{total_pnl:,.2f}", delta=f"{total_pnl:,.2f}")
     c3.metric("Win Rate", f"{win_rate:.1f}%")
-    c4.metric("Profitable", f"{win_trades} / {total_trades}")
+    c4.metric("Avg R:R", f"1:{avg_rr:.1f}")
+    c5.metric("Win / Loss", f"{win_trades}W / {loss_trades}L")
 
     if not df.empty:
-        st.dataframe(df[["id", "trade_date", "symbol", "quantity", "entry_price", "exit_price", "pnl", "execution_type"]].sort_values(by="id", ascending=False), use_container_width=True, height=220)
+        df["cumulative_pnl"] = df["pnl"].cumsum()
+        df["trade_seq"] = range(1, len(df) + 1)
+
+        g1, g2 = st.columns([3, 2])
+        with g1:
+            fig_pnl = px.area(df, x="trade_seq", y="cumulative_pnl", markers=True, title="Cumulative Equity Curve (₹)")
+            fig_pnl.update_layout(plot_bgcolor="rgba(15, 23, 42, 0.6)", paper_bgcolor="rgba(0, 0, 0, 0)", font=dict(color="#94a3b8"), height=240, margin=dict(l=10, r=10, t=30, b=10))
+            pnl_col = "#10b981" if total_pnl >= 0 else "#f43f5e"
+            fig_pnl.update_traces(line=dict(color=pnl_col, width=2), fillcolor=f"{pnl_col}22")
+            st.plotly_chart(fig_pnl, use_container_width=True)
+
+        with g2:
+            setup_pnl = df.groupby("setup_type")["pnl"].sum().reset_index()
+            fig_setup = px.bar(setup_pnl, x="setup_type", y="pnl", color="pnl", title="Setup P&L Breakdown", color_continuous_scale=["#f43f5e", "#10b981"])
+            fig_setup.update_layout(plot_bgcolor="rgba(15, 23, 42, 0.6)", paper_bgcolor="rgba(0, 0, 0, 0)", font=dict(color="#94a3b8"), height=240, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig_setup, use_container_width=True)
+
+        st.markdown("<b>Complete Trade Records:</b>", unsafe_allow_html=True)
+        cols_display = ["id", "trade_date", "symbol", "session", "trade_type", "quantity", "entry_price", "exit_price", "risk_reward", "pnl", "setup_type", "rule_followed", "execution_type"]
+        st.dataframe(df[cols_display].sort_values(by="id", ascending=False), use_container_width=True, height=210)
+
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Export Full Journal to CSV", data=csv, file_name=f"Trade_Journal_{datetime.today().strftime('%Y%m%d')}.csv", mime="text/csv")
     else:
-        st.info("💡 જર્નલ સંપૂર્ણ ક્લીન છે. સાઇડબારમાંથી 'Sync Trades' ક્લિક કરીને આજના ઓર્ડર્સ લાવો.")
+        st.info("💡 જર્નલ સંપૂર્ણ ક્લીન છે. સાઇડબારમાંથી 'Sync Today's Trades' ક્લિક કરીને ઓર્ડર્સ લાવો અથવા બીજા ટેબમાંથી નવો ટ્રેડ એડ કરો.")
 
+# ==================== TAB 2: NEW TRADE ENTRY ====================
 with tab2:
-    p_df = get_participant_data()
-    fig_inst = px.bar(p_df, x="Date", y="Net Sentiment Score", color="Client Type", barmode="group")
-    fig_inst.update_layout(plot_bgcolor="rgba(15, 23, 42, 0.6)", paper_bgcolor="rgba(0, 0, 0, 0)", font=dict(color="#94a3b8"), height=250, margin=dict(l=10, r=10, t=10, b=10))
-    st.plotly_chart(fig_inst, use_container_width=True)
+    st.markdown("### ⚡ Fast New Trade Execution & Detailed Log")
+    
+    calc_col1, calc_col2 = st.columns([3, 2])
+    with calc_col1:
+        c_entry = st.number_input("Calc: Entry Price (₹)", value=140.0, step=0.5, key="calc_entry")
+        c_sl = st.number_input("Calc: Hard Stop Loss (₹)", value=125.0, step=0.5, key="calc_sl")
+    with calc_col2:
+        diff_sl = abs(c_entry - c_sl) if abs(c_entry - c_sl) > 0 else 1.0
+        rec_lots = max(1, int((max_risk_rupees // diff_sl) // 25))
+        rec_qty = rec_lots * 25
+        st.markdown(f"""
+        <div style="background:#161f30; padding:8px 12px; border-radius:6px; border:1px solid #10b981; margin-top:5px;">
+            <div style="color:#94a3b8; font-size:11px; font-weight:bold;">RECOMMENDED POSITION SIZE (1.5% Risk):</div>
+            <div style="color:#10b981; font-size:18px; font-weight:800;">{rec_lots} Lots ({rec_qty} Qty)</div>
+            <div style="color:#cbd5e1; font-size:11px;">Points at Risk: ₹{diff_sl:.1f} | Max Loss: ₹{diff_sl * rec_qty:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with tab3:
-    oc_df, spot_nifty, live_vix = get_active_option_chain("NIFTY")
-    fig_oi = go.Figure()
-    fig_oi.add_trace(go.Bar(x=oc_df["Strike"], y=oc_df["CE OI"], name="Call OI", marker_color="#f43f5e"))
-    fig_oi.add_trace(go.Bar(x=oc_df["Strike"], y=oc_df["PE OI"], name="Put OI", marker_color="#10b981"))
-    fig_oi.update_layout(barmode="group", plot_bgcolor="rgba(15, 23, 42, 0.6)", paper_bgcolor="rgba(0, 0, 0, 0)", font=dict(color="#94a3b8"), height=240, margin=dict(l=10, r=10, t=10, b=10))
-    st.plotly_chart(fig_oi, use_container_width=True)
-
-with tab4:
-    st.markdown("### ⚡ Fast Execution Matrix")
-    e_sym = st.text_input("Contract", "NIFTY 24850 CE")
-    if st.button("🚀 EXECUTE DEMO TEST", use_container_width=True):
-        st.success("Executed!")
-
-with tab5:
-    st.markdown("### 🤖 Spiritual Trader AI Assistant")
-    st.info("💡 Disciplined execution beats emotional impulse every single time.")
-
+    st.markdown("---")
+    with st.form("new_trade_form"):
+        f1, f2, f3 = st.columns(3)
+        with f1:
+            t_symbol = st.text_input("Symbol / Contract", "NIFTY 24850 CE")
+            t_session = st.selectbox("Session", ["Morning (9:15-11:30)", "Mid-Day (11:30-1:30)", "Closing (1:30-3:30)"])
+            t_tf = st.selectbox("Timeframe", ["1m", "3m", "5m", "15m", "1H"])
+        with f2:
+            t_type = st.selectbox("Trade Type", ["BUY (Long)", "SELL (Short)"])
+            t_entry = st.number_input("Entry Price (₹)", value=float(c_entry), step=0.5)
+            t_exit = st.number_input("Exit Price (₹)", value=170.0, step=0.5)
+        with f3:
+            t_sl = st.number_input("Stop Loss (₹)", value=float(c_sl), step=0.5)
+            t_tgt = st.number_input("Target Price (₹)", value=180.0, step=0.5)
+            t_qty = st.number_input("Quantity", value=int(rec_qty), s
