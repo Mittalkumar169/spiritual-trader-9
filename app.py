@@ -362,4 +362,22 @@ with t4:
     fig_o.update_layout(barmode="group", height=240, template=plotly_template)
     st.plotly_chart(fig_o, use_container_width=True)
 
+
 with t5:
+    st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
+    st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો.")
+    
+    default_rules_text = get_db_val("custom_trading_rules") or (
+        "1. Never take a revenge trade after a loss.\n"
+        "2. Always respect predefined Stop Loss.\n"
+        "3. Wait patiently for liquidity sweeps/Order blocks.\n"
+        "4. Stop trading for the day after hitting Daily Max Loss."
+    )
+    
+    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
+    
+    if st.button("Save & Update Rules"):
+        set_db_val("custom_trading_rules", edited_rules)
+        st.success("તમારા નિયમો સફળતાપૂર્વક અપડેટ અને સેવ થઈ ગયા છે!")
+
+
