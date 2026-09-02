@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -346,7 +347,7 @@ with t3:
         {"Date": d_list[0], "Client Type": "Retail", "Net Sentiment": -51100},
         {"Date": d_list[0], "Client Type": "DII", "Net Sentiment": 21200},
         {"Date": d_list[0], "Client Type": "FII", "Net Sentiment": 85000},
-        {"Date": d_list[1], "Client Type": "Client Type", "Client Type": "Retail", "Net Sentiment": -71000},
+        {"Date": d_list[1], "Client Type": "Retail", "Net Sentiment": -71000},
         {"Date": d_list[1], "Client Type": "DII", "Net Sentiment": 24500},
         {"Date": d_list[1], "Client Type": "FII", "Net Sentiment": 98000},
         {"Date": d_list[2], "Client Type": "Retail", "Net Sentiment": -95000},
@@ -370,10 +371,17 @@ with t4:
 
 with t5:
     st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
-    st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો. જ્યારે તમે Fyers માંથી ટ્રેડ્સ સિંક કરશો, ત્યારે આ ઓટોમેટેડ ઓડિટર તમારી ભૂલો પકડીને જર્નલમાં નોંધી દેશે:")
-    st.markdown("1. **Overtrading Check:** નક્કી કરેલા મહત્તમ ટ્રેડ્સ કરતા વધારે ટ્રેડ થયા હશે તો એલર્ટ આપશે.")
-    st.markdown("2. **Risk Management Check:** જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે 'Risk Limit Crossed' તરીકે ફ્લેગ થશે.")
+    st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો.")
     
     default_rules_text = get_db_val("custom_trading_rules") or (
         "1. Never take a revenge trade after a loss.\n"
-        "2. Always res
+        "2. Always respect predefined Stop Loss.\n"
+        "3. Wait patiently for liquidity sweeps/Order blocks.\n"
+        "4. Stop trading for the day after hitting Daily Max Loss."
+    )
+    
+    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
+    
+    if st.button("Save & Update Rules"):
+        set_db_val("custom_trading_rules", edited_rules)
+        st.success
