@@ -1,346 +1,4 @@
 
-
-import streamlit as st
-import json
-import os
-import datetime
-import pandas as pd
-
-# ====================================================
-# 🔒 Fixed & Permanent Locked Rules
-# ====================================================
-FIXED_MAX_TRADES = 3
-FIXED_MAX_LOSS = 1000.0 # મેક્સ લોસ ₹1000 સેટ કર્યો છે
-FIXED_RISK_PERCENT = 3.0
-
-st.subheader("🔒 Fixed Risk & Discipline Rules")
-st.write(f"📌 **Max Trades Limit:** {FIXED_MAX_TRADES} | **Max Loss:** ₹{FIXED_MAX_LOSS} | **Risk:** {FIXED_RISK_PERCENT}%")
-
-
-# ====================================================
-# 📝 Daily Journal & Psychology Notes Box
-# ====================================================
-st.markdown("---")
-st.subheader("📖 Daily Trading Journal & Psychology Notes")
-
-JOURNAL_TEXT_FILE = "daily_notes.json"
-
-def load_daily_notes():
-    if os.path.exists(JOURNAL_TEXT_FILE):
-        with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_daily_notes(notes_dict):
-    with open(JOURNAL_TEXT_FILE, "w", encoding="utf-8") as f:
-        json.dump(notes_dict, f, indent=4)
-
-all_notes = load_daily_notes()
-
-today_date = str(datetime.date.today())
-st.write(f"📅 **Date:** {today_date}")
-existing_note = all_notes.get(today_date, "")
-
-user_daily_note = st.text_area("How was the market today? Write about your fear, greed, or psychology here:", value=existing_note, height=150)
-
-if st.button("💾 Save Today's Journal"):
-    all_notes[today_date] = user_daily_note
-    save_daily_notes(all_notes)
-    st.success("✅ Today's journal notes saved successfully!")
-
-
-# ====================================================
-# 📈 Weekly & Monthly Analysis Report
-# ====================================================
-st.markdown("---")
-st.markdown("### 📈 Weekly & Monthly Trading Performance")
-
-if os.path.exists(JOURNAL_TEXT_FILE) and len(all_notes) > 0:
-    notes_df = pd.DataFrame(list(all_notes.items()), columns=["Date", "Notes"])
-    notes_df["Date"] = pd.to_datetime(notes_df["Date"])
-    
-    notes_df["Month"] = notes_df["Date"].dt.strftime('%Y-%m')
-    notes_df["Week"] = notes_df["Date"].dt.isocalendar().week
-
-    report_type = st.selectbox("Select Report:", ["All Notes by Date", "Monthly Analysis", "Weekly Analysis"])
-
-    if report_type == "All Notes by Date":
-        st.dataframe(notes_df[["Date", "Notes"]], use_container_width=True)
-
-    elif report_type == "Monthly Analysis":
-        selected_month = st.selectbox("Select Month:", notes_df["Month"].unique())
-        filtered_month_df = notes_df[notes_df["Month"] == selected_month]
-        st.write(f"📁 **Journal & Notes for Month: {selected_month}**")
-        st.dataframe(filtered_month_df, use_container_width=True)
-
-    elif report_type == "Weekly Analysis":
-        selected_week = st.selectbox("Select Week Number:", notes_df["Week"].unique())
-        filtered_week_df = notes_df[notes_df["Week"].astype(str) == str(selected_week)]
-        st.write(f"📁 **Journal & Notes for Week {selected_week}**")
-        st.dataframe(filtered_week_df, use_container_width=True)
-else:
-    st.info("ℹ️ No journal notes saved yet. Once you write daily journals, weekly/monthly analysis will appear here.")
-
-
-# ====================================================
-# 📊 Evening Trade Audit Report
-# ====================================================
-def evening_trade_audit_report(journal_file_path="trade_journal.json"):
-    if not os.path.exists(journal_file_path):
-        st.warning("📭 Today's trade journal file not found.")
-        return
-
-    try:
-        with open(journal_file_path, "r", encoding="utf-8") as f:
-            trades = json.load(f)
-    except:
-        trades = []
-
-    total_trades = len(trades)
-    total_pnl = sum(t.get('pnl', 0) for t in trades)
-
-    st.markdown("---")
-    st.markdown("### 📊 Evening Trade Audit Report")
-    
-    if total_trades > FIXED_MAX_TRADES:
-        st.error(f"⚠️ Error: Today you took more trades than the fixed limit ({FIXED_MAX_TRADES})! Total trades: {total_trades}")
-    else:
-        st.success(f"✅ Trade count is safe ({total_trades}/{FIXED_MAX_TRADES}).")
-
-    mistake_found = False
-    for i, trade in enumerate(trades, 1):
-        risk_pct = trade.get('risk_percent', 0)
-        if risk_pct > FIXED_RISK_PERCENT:
-            st.warning(f"⚠️ Error [Trade #{i}]: Risk in this trade ({risk_pct}%) was higher than the fixed limit ({FIXED_RISK_PERCENT}%)!")
-            mistake_found = True
-
-    if total_pnl <= -FIXED_MAX_LOSS:
-        st.error(f"⚠️ Error: Today's total loss (₹{abs(total_pnl)}) exceeded the fixed max loss (₹{FIXED_MAX_LOSS})!")
-        mistake_found = True
-
-    if not mistake_found and total_trades <= FIXED_MAX_TRADES:
-        st.success("🌟 Great job! Today you followed all rules and maintained discipline.")
-
-    st.info(f"💰 Today's Total P&L: ₹{total_pnl}")
-
-
-
-
-
-
-import streamlit as st
-
-# 🔒 કાયમી ફિક્સ અને લૉક કરેલા નિયમો (કોઈ ક્યારેય બદલી નહીં શકે)
-FIXED_MAX_TRADES = 3
-FIXED_MAX_LOSS = 1500.0
-FIXED_RISK_PERCENT = 3.0
-
-# ઇન્ટરફેસ પર માત્ર ફિક્સ આંકડા જ દેખાશે, કોઈ એડિટિંગ બોક્સ કે બટન નહીં હોય
-st.subheader("🔒 તમારા ફિક્સ રિસ્ક નિયમો (કાયમ માટે લૉક)")
-st.write(f"📌 **મેક્સ ટ્રેડ:** {FIXED_MAX_TRADES}")
-st.write(f"📌 **મેક્સ લોસ:** ₹{FIXED_MAX_LOSS}")
-st.write(f"📌 **રિસ્ક પર્સન્ટ:** {FIXED_RISK_PERCENT}%")
-
-
-import streamlit as st
-import json
-import os
-
-SETTINGS_FILE = "user_locked_settings.json"
-
-def load_settings():
-    if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"max_trades": 3, "max_loss": 1500.0, "risk_percent": 3.0, "is_locked": False}
-
-def save_settings(data):
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
-
-current_settings = load_settings()
-
-st.subheader("🔒 રિસ્ક મેનેજમેન્ટ અને લૉક સેટિંગ્સ")
-
-if current_settings.get("is_locked", False):
-    st.success("✅ તમારા સેટિંગ્સ હાલમાં લૉક અને સુરક્ષિત છે.")
-    st.write(f"📌 **મેક્સ ટ્રેડ:** {current_settings['max_trades']}")
-    st.write(f"📌 **મેક્સ લોસ:** ₹{current_settings['max_loss']}")
-    st.write(f"📌 **રિસ્ક પર્સન્ટ:** {current_settings['risk_percent']}%")
-    
-    if st.button("🔓 સેટિંગ્સ એડિટ કરવા માટે અનલોક કરો"):
-        current_settings["is_locked"] = False
-        save_settings(current_settings)
-        st.rerun()
-else:
-    st.warning("⚠️ સેટિંગ્સ અનલોક છે. તમારી મરજી મુજબ સેટ કરીને 'Save & Lock' કરો.")
-    
-    new_max_trades = st.number_input("મેક્સ ટ્રેડ", value=current_settings["max_trades"], step=1)
-    new_max_loss = st.number_input("મેક્સ લોસ (₹)", value=current_settings["max_loss"], step=100.0)
-    new_risk_pct = st.number_input("રિસ્ક (%)", value=current_settings["risk_percent"], step=0.5)
-    
-    if st.button("💾 Save & Lock (કાયમ માટે લૉક કરો)"):
-        updated_data = {
-            "max_trades": int(new_max_trades),
-            "max_loss": float(new_max_loss),
-            "risk_percent": float(new_risk_pct),
-            "is_locked": True
-        }
-        save_settings(updated_data)
-        st.success("સફળતાપૂર્વક સેવ અને લૉક થઈ ગયું!")
-        st.rerun()
-
-
-import json
-import os
-
-# ====================================================
-# 🔒 સેફ એડિટેબલ લૉક મેનેજર (સૌથી ઉપર મૂકવું)
-# ====================================================
-class SafeEditableLock:
-    def __init__(self, filename="user_locked_settings.json"):
-        self.filename = filename
-        self.settings = self.__load_settings()
-
-    def __load_settings(self):
-        if os.path.exists(self.filename):
-            with open(self.filename, "r", encoding="utf-8") as f:
-                return json.load(f)
-        else:
-            # પહેલીવારના ડિફોલ્ટ સેટિંગ્સ
-            default_settings = {
-                "max_trades": 3,
-                "max_loss": 1500.0,
-                "risk_percent": 3.0
-            }
-            self.__save_to_file(default_settings)
-            return default_settings
-
-    def __save_to_file(self, data):
-        with open(self.filename, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-
-    def update_settings(self, new_max_trades, new_max_loss, new_risk_percent):
-        """ જ્યારે તમે જાતે એડિટ કરવા માંગો ત્યારે જ આ ફંક્શન રન કરવાનું """
-        self.settings["max_trades"] = new_max_trades
-        self.settings["max_loss"] = new_max_loss
-        self.settings["risk_percent"] = new_risk_percent
-        
-        self.__save_to_file(self.settings)
-        print("✅ સેટિંગ્સ સફળતાપૂર્વક એડિટ અને સેવ થઈ ગયા છે!")
-
-    @property
-    def max_trades(self): return self.settings["max_trades"]
-    @property
-    def max_loss(self): return self.settings["max_loss"]
-    @property
-    def risk_percent(self): return self.settings["risk_percent"]
-
-# ઓબ્જેક્ટ ક્રિએટ કરો
-locked_config = SafeEditableLock()
-
-
-# ====================================================
-# 📊 સાંજે ટ્રેડ સિંક કરતી વખતે ભૂલો ચેક કરવાનો રિપોર્ટ
-# ====================================================
-def evening_trade_audit_report(journal_file_path="trade_journal.json"):
-    if not os.path.exists(journal_file_path):
-        print("📭 આજની ટ્રેડ જર્નલ ફાઇલ મળી નથી.")
-        return
-
-    try:
-        with open(journal_file_path, "r", encoding="utf-8") as f:
-            trades = json.load(f)
-    except:
-        trades = []
-
-    total_trades = len(trades)
-    total_pnl = sum(t.get('pnl', 0) for t in trades)
-
-    print("\n========================================")
-    print(" 📊 સાંજનું ટ્રેડ ઓડિટ રિપોર્ટ ")
-    print("========================================")
-    print(f"🔒 [હાલના લૉક નિયમો] મેક્સ ટ્રેડ: {locked_config.max_trades} | મેક્સ લોસ: ₹{locked_config.max_loss} | રિસ્ક: {locked_config.risk_percent}%")
-    
-    if total_trades > locked_config.max_trades:
-        print(f"⚠️ ભૂલ: તમે ફિક્સ લિમિટ ({locked_config.max_trades}) કરતાં વધારે ટ્રેડ કર્યા છે! કુલ: {total_trades}")
-    else:
-        print(f"✅ ટ્રેડ કાઉન્ટ સેફ છે ({total_trades}/{locked_config.max_trades}).")
-
-    mistake_found = False
-    for i, trade in enumerate(trades, 1):
-        risk_pct = trade.get('risk_percent', 0)
-        if risk_pct > locked_config.risk_percent:
-            print(f"⚠️ ભૂલ [ટ્રેડ #{i}]: આ ટ્રેડમાં રિસ્ક ({risk_pct}%) લૉક મર્યાદા કરતા વધારે હતું!")
-            mistake_found = True
-
-    if total_pnl <= -locked_config.max_loss:
-        print(f"⚠️ ભૂલ: આજનું કુલ નુકસાન લૉક કરેલા મેક્સ લોસ વટાવી ગયું છે!")
-        mistake_found = True
-
-    if not mistake_found and total_trades <= locked_config.max_trades:
-        print("🌟 ખૂબ સરસ! આજે તમે બધા લૉક કરેલા નિયમો પાળ્યા છે.")
-
-    print(f"💰 આજનું કુલ P&L: ₹{total_pnl}")
-    print("========================================\n")
-
-
-import json
-import os
-
-def evening_trade_audit_report(file_path="trade_journal.json"):
-    # आपके फिक्स किए हुए नियम (हार्डકોડેડ)
-    MAX_TRADES = 3
-    MAX_LOSS = 1500.0
-    MAX_PER_RISK = 500.0
-
-    if not os.path.exists(file_path):
-        print("📭 आज की ट्रेड फ़ाइल या जर्नल डेटा नहीं मिला.")
-        return
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            trades = json.load(f)
-    except Exception as e:
-        print(f"❌ डेटा पढ़ने में एरर: {e}")
-        return
-
-    total_trades = len(trades)
-    total_pnl = sum(t.get('pnl', 0) for t in trades)
-
-    print("\n========================================")
-    print(" 📊 शाम का ट्रेड ऑडिट रिपोर्ट ")
-    print("========================================")
-    
-    # ૧. ઓવરટ્રેડિંગ ચેક
-    if total_trades > MAX_TRADES:
-        print(f"⚠️ गलती: आपने तय सीमा ({MAX_TRADES}) से ज्यादा ट्रेड किए! कुल ट्रेड: {total_trades}")
-    else:
-        print(f"✅ ट्रेड काउंट सही था ({total_trades}/{MAX_TRADES}).")
-
-    # ૨. પર ટ્રેડ રિસ્ક ચેક
-    mistake_found = False
-    for i, trade in enumerate(trades, 1):
-        risk = trade.get('risk_amount', 0)
-        if risk > MAX_PER_RISK:
-            print(f"⚠️ गलती [ટ્રેડ #{i}]: इस ट्रेड में रिस्क (₹{risk}) तय लिमिट (₹{MAX_PER_RISK}) से ज्यादा था!")
-            mistake_found = True
-
-    # ૩. કુલ નુકસાન ચેક
-    if total_pnl <= -MAX_LOSS:
-        print(f"⚠️ गलती: आज का कुल नुकसान (₹{abs(total_pnl)}) मैक्स लॉस लिमिट (₹{MAX_LOSS}) से ज्यादा हो गया था!")
-        mistake_found = True
-
-    if not mistake_found and total_trades <= MAX_TRADES:
-        print("🌟 बहुत बढ़िया! आज आपने सभी नियमों का पूरी तरह पालन किया है, कोई गलती नहीं मिली।")
-
-    print(f"💰 आज का कुल P&L: ₹{total_pnl}")
-    print("========================================\n")
-
-# शाम को जब आप ट्रेड सिंक करवाएं, तब सिर्फ इस फังก์ชัน को रन कर लें:
-# evening_trade_audit_report()
-
-
 import base64
 import hashlib
 import io
@@ -411,6 +69,10 @@ def check_password():
 
 if not check_password():
     st.stop()
+
+FIXED_MAX_TRADES = 3
+FIXED_MAX_LOSS = 1000.0
+FIXED_RISK_PERCENT = 3.0
 
 def init_db():
     conn = sqlite3.connect("journal.db")
@@ -495,7 +157,6 @@ live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-# Fetch Live Capital from Fyers Funds API automatically if connected
 default_capital = float(get_db_val("tot_cap") or 10000.0)
 if app_id_val and live_tok:
     try:
@@ -549,9 +210,7 @@ if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
                         entry_p = buy_avg if buy_avg > 0 else sell_avg
                         exit_p = sell_avg if sell_avg > 0 else buy_avg
                         rule_status = "Yes (100%)"
-                        violations = []
                         if pnl_val < 0 and abs(pnl_val) > max_risk_amt:
-                            violations.append(f"Risk Limit Crossed")
                             rule_status = "No (Risk Violated)"
 
                         v = (today_str, "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", rule_status, "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
@@ -617,6 +276,61 @@ with t1:
     else:
         st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Trades & Capital' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
 
+    st.markdown("---")
+    st.subheader("📖 Daily Trading Journal & Psychology Notes")
+
+    JOURNAL_TEXT_FILE = "daily_notes.json"
+
+    def load_daily_notes():
+        if os.path.exists(JOURNAL_TEXT_FILE):
+            with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
+    def save_daily_notes(notes_dict):
+        with open(JOURNAL_TEXT_FILE, "w", encoding="utf-8") as f:
+            json.dump(notes_dict, f, indent=4)
+
+    all_notes = load_daily_notes()
+
+    today_date = str(datetime.today().date())
+    st.write(f"📅 **Date:** {today_date}")
+    existing_note = all_notes.get(today_date, "")
+
+    user_daily_note = st.text_area("How was the market today? Write about your fear, greed, or psychology here (30-50 words):", value=existing_note, height=120)
+
+    if st.button("💾 Save Today's Journal"):
+        all_notes[today_date] = user_daily_note
+        save_daily_notes(all_notes)
+        st.success("✅ Today's journal notes saved successfully!")
+
+    st.markdown("---")
+    st.markdown("### 📈 Weekly & Monthly Trading Performance")
+
+    if os.path.exists(JOURNAL_TEXT_FILE) and len(all_notes) > 0:
+        notes_df = pd.DataFrame(list(all_notes.items()), columns=["Date", "Notes"])
+        notes_df["Date"] = pd.to_datetime(notes_df["Date"])
+        
+        notes_df["Month"] = notes_df["Date"].dt.strftime('%Y-%m')
+        notes_df["Week"] = notes_df["Date"].dt.isocalendar().week
+
+        report_type = st.selectbox("Select Report:", ["All Notes by Date", "Monthly Analysis", "Weekly Analysis"])
+
+        if report_type == "All Notes by Date":
+            st.dataframe(notes_df[["Date", "Notes"]], use_container_width=True)
+        elif report_type == "Monthly Analysis":
+            selected_month = st.selectbox("Select Month:", notes_df["Month"].unique())
+            filtered_month_df = notes_df[notes_df["Month"] == selected_month]
+            st.write(f"📁 **Journal & Notes for Month: {selected_month}**")
+            st.dataframe(filtered_month_df, use_container_width=True)
+        elif report_type == "Weekly Analysis":
+            selected_week = st.selectbox("Select Week Number:", notes_df["Week"].unique())
+            filtered_week_df = notes_df[notes_df["Week"].astype(str) == str(selected_week)]
+            st.write(f"📁 **Journal & Notes for Week {selected_week}**")
+            st.dataframe(filtered_week_df, use_container_width=True)
+    else:
+        st.info("ℹ️ No journal notes saved yet. Once you write daily journals, weekly/monthly analysis will appear here.")
+
 with t2:
     st.markdown("<b>🔍 Performance & Behavioral Insights</b>", unsafe_allow_html=True)
     conn = sqlite3.connect("journal.db")
@@ -637,7 +351,6 @@ with t2:
 
 with t3:
     st.markdown("<b>🏦 Participant-wise Open Interest & Summary Matrix</b>", unsafe_allow_html=True)
-    
     st.markdown("""
     <div style="background-color:#1e293b; padding: 14px; border-radius: 8px; border-left: 5px solid #2563eb; margin-bottom: 15px;">
         <h4 style="color:#38bdf8; margin:0 0 6px 0;">⚡ Smart Money Trend & Summary Matrix:</h4>
@@ -702,7 +415,6 @@ with t4:
     fig_o.update_layout(barmode="group", height=240, template=plotly_template)
     st.plotly_chart(fig_o, use_container_width=True)
 
-
 with t5:
     st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
     st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો.")
@@ -718,4 +430,5 @@ with t5:
     if st.button("Save & Update Rules"):
         set_db_val("custom_trading_rules", edited_rules)
         st.success("તમારા નિયમો સફળતાપૂર્વક અપડેટ અને સેવ થઈ ગયા છે!")
+
 
