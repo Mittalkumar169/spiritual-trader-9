@@ -7,21 +7,21 @@ import datetime
 import pandas as pd
 
 # ====================================================
-# 🔒 તમારા ફિક્સ અને કાયમી લૉક કરેલા નિયમો
+# 🔒 Fixed & Permanent Locked Rules
 # ====================================================
 FIXED_MAX_TRADES = 3
-FIXED_MAX_LOSS = 1500.0
+FIXED_MAX_LOSS = 1000.0 # મેક્સ લોસ ₹1000 સેટ કર્યો છે
 FIXED_RISK_PERCENT = 3.0
 
-st.subheader("🔒 તમારા ફિક્સ રિસ્ક અને શિસ્ત નિયમો")
-st.write(f"📌 **મેક્સ ટ્રેડ લિમિટ:** {FIXED_MAX_TRADES} | **મેક્સ લોસ:** ₹{FIXED_MAX_LOSS} | **રિસ્ક:** {FIXED_RISK_PERCENT}%")
+st.subheader("🔒 Fixed Risk & Discipline Rules")
+st.write(f"📌 **Max Trades Limit:** {FIXED_MAX_TRADES} | **Max Loss:** ₹{FIXED_MAX_LOSS} | **Risk:** {FIXED_RISK_PERCENT}%")
 
 
 # ====================================================
-# 📝 ડેલી જર્નલ અને સાયકોલોજી નોટ્સ સેવ કરવા માટેનું બોક્સ
+# 📝 Daily Journal & Psychology Notes Box
 # ====================================================
 st.markdown("---")
-st.subheader("📖 ડેલી ટ્રેડિંગ જર્નલ અને સાયકોલોજી નોટ્સ")
+st.subheader("📖 Daily Trading Journal & Psychology Notes")
 
 JOURNAL_TEXT_FILE = "daily_notes.json"
 
@@ -38,56 +38,56 @@ def save_daily_notes(notes_dict):
 all_notes = load_daily_notes()
 
 today_date = str(datetime.date.today())
-st.write(f"📅 **આજની તારીખ:** {today_date}")
+st.write(f"📅 **Date:** {today_date}")
 existing_note = all_notes.get(today_date, "")
 
-user_daily_note = st.text_area("આજે માર્કેટમાં કેવું રહ્યું? ફિયર, ગ્રીડ કે સાયકોલોજી વિશે અહીં લખો:", value=existing_note, height=150)
+user_daily_note = st.text_area("How was the market today? Write about your fear, greed, or psychology here:", value=existing_note, height=150)
 
-if st.button("💾 આજની જર્નલ સેવ કરો"):
+if st.button("💾 Save Today's Journal"):
     all_notes[today_date] = user_daily_note
     save_daily_notes(all_notes)
-    st.success("✅ તમારી આજની જર્નલ નોટ્સ સફળતાપૂર્વક સેવ થઈ ગઈ છે!")
+    st.success("✅ Today's journal notes saved successfully!")
 
 
 # ====================================================
-# 📈 વીકલી અને મંથલી એનાલિસિસ રિપોર્ટ
+# 📈 Weekly & Monthly Analysis Report
 # ====================================================
 st.markdown("---")
-st.markdown("### 📈 વીકલી અને મંથલી ટ્રેડિંગ પરફોર્મન્સ")
+st.markdown("### 📈 Weekly & Monthly Trading Performance")
 
 if os.path.exists(JOURNAL_TEXT_FILE) and len(all_notes) > 0:
-    notes_df = pd.DataFrame(list(all_notes.items()), columns=["તારીખ (Date)", "જર્નલ નોટ્સ (Notes)"])
-    notes_df["તારીખ (Date)"] = pd.to_datetime(notes_df["તારીખ (Date)"])
+    notes_df = pd.DataFrame(list(all_notes.items()), columns=["Date", "Notes"])
+    notes_df["Date"] = pd.to_datetime(notes_df["Date"])
     
-    notes_df["મહિનો (Month)"] = notes_df["તારીખ (Date)"].dt.strftime('%Y-%m')
-    notes_df["અઠવાડિયું (Week)"] = notes_df["તારીખ (Date)"].dt.isocalendar().week
+    notes_df["Month"] = notes_df["Date"].dt.strftime('%Y-%m')
+    notes_df["Week"] = notes_df["Date"].dt.isocalendar().week
 
-    report_type = st.selectbox("રિપોર્ટ સિલેક્ટ કરો:", ["તારીખ મુજબ બધી નોટ્સ", "મંથલી એનાલિસિસ", "વીકલી એનાલિસિસ"])
+    report_type = st.selectbox("Select Report:", ["All Notes by Date", "Monthly Analysis", "Weekly Analysis"])
 
-    if report_type == "તારીખ મુજબ બધી નોટ્સ":
-        st.dataframe(notes_df[["તારીખ (Date)", "જર્નલ નોટ્સ (Notes)"]], use_container_width=True)
+    if report_type == "All Notes by Date":
+        st.dataframe(notes_df[["Date", "Notes"]], use_container_width=True)
 
-    elif report_type == "મંથલી એનાલિસિસ":
-        selected_month = st.selectbox("મહિનો પસંદ કરો:", notes_df["મહિનો (Month)"].unique())
-        filtered_month_df = notes_df[notes_df["મહિનો (Month)"] == selected_month]
-        st.write(f"📁 **મહિનો: {selected_month} ની જર્નલ અને નોટ્સ:**")
+    elif report_type == "Monthly Analysis":
+        selected_month = st.selectbox("Select Month:", notes_df["Month"].unique())
+        filtered_month_df = notes_df[notes_df["Month"] == selected_month]
+        st.write(f"📁 **Journal & Notes for Month: {selected_month}**")
         st.dataframe(filtered_month_df, use_container_width=True)
 
-    elif report_type == "વીકલી એનાલિસિસ":
-        selected_week = st.selectbox("અઠવાડિયું (Week Number) પસંદ કરો:", notes_df["અઠવાડિયું (Week)"].unique())
-        filtered_week_df = notes_df[notes_df["અઠવાડિયું (Week)"].astype(str) == str(selected_week)]
-        st.write(f"📁 **વીક {selected_week} ની જર્નલ અને નોટ્સ:**")
+    elif report_type == "Weekly Analysis":
+        selected_week = st.selectbox("Select Week Number:", notes_df["Week"].unique())
+        filtered_week_df = notes_df[notes_df["Week"].astype(str) == str(selected_week)]
+        st.write(f"📁 **Journal & Notes for Week {selected_week}**")
         st.dataframe(filtered_week_df, use_container_width=True)
 else:
-    st.info("ℹ️ હજુ સુધી કોઈ જર્નલ નોટ્સ સેવ થઈ નથી. રોજ જર્નલ લખશો એટલે અહીં વીકલી/મંથલી એનાલિસિસ દેખાવા લાગશે.")
+    st.info("ℹ️ No journal notes saved yet. Once you write daily journals, weekly/monthly analysis will appear here.")
 
 
 # ====================================================
-# 📊 સાંજે ટ્રેડ સિંક કરતી વખતે ભૂલો ચેક કરવાનો રિપોર્ટ
+# 📊 Evening Trade Audit Report
 # ====================================================
 def evening_trade_audit_report(journal_file_path="trade_journal.json"):
     if not os.path.exists(journal_file_path):
-        st.warning("📭 આજની ટ્રેડ જર્નલ ફાઇલ મળી નથી.")
+        st.warning("📭 Today's trade journal file not found.")
         return
 
     try:
@@ -100,28 +100,30 @@ def evening_trade_audit_report(journal_file_path="trade_journal.json"):
     total_pnl = sum(t.get('pnl', 0) for t in trades)
 
     st.markdown("---")
-    st.markdown("### 📊 સાંજનું ટ્રેડ ઓડિટ રિપોર્ટ")
+    st.markdown("### 📊 Evening Trade Audit Report")
     
     if total_trades > FIXED_MAX_TRADES:
-        st.error(f"⚠️ ભૂલ: આજે તમે ફિક્સ લિમિટ ({FIXED_MAX_TRADES}) કરતાં વધારે ટ્રેડ કર્યા છે! કુલ ટ્રેડ: {total_trades}")
+        st.error(f"⚠️ Error: Today you took more trades than the fixed limit ({FIXED_MAX_TRADES})! Total trades: {total_trades}")
     else:
-        st.success(f"✅ ટ્રેડ કાઉન્ટ સેફ છે ({total_trades}/{FIXED_MAX_TRADES}).")
+        st.success(f"✅ Trade count is safe ({total_trades}/{FIXED_MAX_TRADES}).")
 
     mistake_found = False
     for i, trade in enumerate(trades, 1):
         risk_pct = trade.get('risk_percent', 0)
         if risk_pct > FIXED_RISK_PERCENT:
-            st.warning(f"⚠️ ભૂલ [ટ્રેડ #{i}]: આ ટ્રેડમાં રિસ્ક ({risk_pct}%) ફિક્સ મર્યાદા ({FIXED_RISK_PERCENT}%) કરતા વધારે હતું!")
+            st.warning(f"⚠️ Error [Trade #{i}]: Risk in this trade ({risk_pct}%) was higher than the fixed limit ({FIXED_RISK_PERCENT}%)!")
             mistake_found = True
 
     if total_pnl <= -FIXED_MAX_LOSS:
-        st.error(f"⚠️ ભૂલ: આજનું કુલ નુકસાન (₹{abs(total_pnl)}) ફિક્સ મેક્સ લોસ (₹{FIXED_MAX_LOSS}) વટાવી ગયું છે!")
+        st.error(f"⚠️ Error: Today's total loss (₹{abs(total_pnl)}) exceeded the fixed max loss (₹{FIXED_MAX_LOSS})!")
         mistake_found = True
 
     if not mistake_found and total_trades <= FIXED_MAX_TRADES:
-        st.success("🌟 ખૂબ સરસ! આજે તમે બધા નિયમો પાળ્યા છે, ડિસિપ્લિન જળવાયું છે.")
+        st.success("🌟 Great job! Today you followed all rules and maintained discipline.")
 
-    st.info(f"💰 આજનું કુલ P&L: ₹{total_pnl}")
+    st.info(f"💰 Today's Total P&L: ₹{total_pnl}")
+
+
 
 
 
