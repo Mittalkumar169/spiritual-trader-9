@@ -295,39 +295,47 @@ with t2:
         st.info("એનાલિટિક્સ જોવા માટે પહેલાં ટ્રેડ્સ સિંક કરો.")
 
 with t3:
-    st.markdown("<b>🏦 3-Day Aggregated Institutional Flow & Net Trend Calculation</b>", unsafe_allow_html=True)
+    st.markdown("<b>🏦 Participant-wise Open Interest & Excel Summary Matrix (Custom Sheet Layout)</b>", unsafe_allow_html=True)
     
-    # 3-Day Aggregated Calculation Card
+    # Verdict Box matching user photo request
     st.markdown("""
-    <div style="background-color:#1e293b; padding: 16px; border-radius: 8px; border-left: 5px solid #2563eb; margin-bottom: 15px;">
-        <h4 style="color:#38bdf8; margin:0 0 8px 0;">📊 3-Day Cumulative Calculation & Smart Money Verdict:</h4>
-        <p style="font-size:15px; color:#e2e8f0; margin:0 0 10px 0;">
-            <b>FII 3-Day Net Flow:</b> <span style="color:#10b981;">+2,85,000 Net Longs (Calls + Futures)</span> | 
-            <b>Client (Retail) 3-Day Net Flow:</b> <span style="color:#f43f5e;">-3,40,000 Net Shorts / Puts</span>
+    <div style="background-color:#1e293b; padding: 14px; border-radius: 8px; border-left: 5px solid #2563eb; margin-bottom: 15px;">
+        <h4 style="color:#38bdf8; margin:0 0 6px 0;">⚡ Smart Money Trend & Summary Matrix:</h4>
+        <p style="font-size:14px; color:#cbd5e1; margin:0 0 6px 0;">
+            • <b>FII Long Ftrs:</b> 17,230 (9.00%) | <b>Short Ftrs:</b> 174,180 (91.00%) | Total: 191,410<br>
+            • <b>Client (Retail):</b> Net Bearish / Trapped in Puts & Short Calls<br>
+            • <b>FII & Pro:</b> Net Bullish in Index Calls & Index Futures
         </p>
-        <p style="font-size:16px; font-weight:bold; color:#10b981; margin:0;">
-            🟢 OVERALL TREND CALCULATION: STRONG BULLISH (SMART MONEY ACCUMULATION)
+        <hr style="border:0; border-top:1px solid #334155; margin:8px 0;">
+        <p style="font-size:15px; font-weight:bold; color:#10b981; margin:0;">
+            🟢 OVERALL MARKET BIAS: STRONG BULLISH (BUY ON DIPS)
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    if "history_3day_list" in st.session_state and st.session_state["history_3day_list"]:
-        for df_item in st.session_state["history_3day_list"]:
-            t_date = df_item["Trading_Date"].iloc[0]
-            st.markdown(f"#### 📅 Trading Date: {t_date}")
-            clean_df = df_item.loc[:, ~df_item.columns.str.contains('^Unnamed')]
-            st.dataframe(clean_df, use_container_width=True)
-            st.markdown("---")
-    else:
-        sample_excel_view = [
-            {"Date": "02-09-2026", "Participant": "FII", "Idx Fut Net": "-1", "Idx Calls Net": "+4,90,328", "Idx Puts Net": "-4,90,328", "Stock Fut Net": "+1,18,000", "Bias": "🟢 Bullish"},
-            {"Date": "02-09-2026", "Participant": "Client (Retail)", "Idx Fut Net": "+1,033", "Idx Calls Net": "-1,91,009", "Idx Puts Net": "+6,54,142", "Stock Fut Net": "-95,000", "Bias": "🔴 Bearish"},
-            {"Date": "01-09-2026", "Participant": "FII", "Idx Fut Net": "+12,500", "Idx Calls Net": "+3,80,000", "Idx Puts Net": "-3,10,000", "Stock Fut Net": "+98,000", "Bias": "🟢 Bullish"},
-            {"Date": "01-09-2026", "Participant": "Client (Retail)", "Idx Fut Net": "-8,400", "Idx Calls Net": "-1,50,000", "Idx Puts Net": "+4,20,000", "Stock Fut Net": "-75,000", "Bias": "🔴 Bearish"},
-            {"Date": "31-08-2026", "Participant": "FII", "Idx Fut Net": "+8,100", "Idx Calls Net": "+2,90,000", "Idx Puts Net": "-2,40,000", "Stock Fut Net": "+85,000", "Bias": "🟢 Bullish"},
-            {"Date": "31-08-2026", "Participant": "Client (Retail)", "Idx Fut Net": "-5,200", "Idx Calls Net": "-1,20,000", "Idx Puts Net": "+3,80,000", "Stock Fut Net": "-60,000", "Bias": "🔴 Bearish"}
-        ]
-        st.dataframe(pd.DataFrame(sample_excel_view), use_container_width=True)
+    st.markdown("### 📋 Participant-wise OI Summary Sheet (Excel Format)")
+    
+    excel_sheet_data = [
+        {"Participant Group": "Clients (Retail)", "Instrument": "Stock Futures", "Today": "-2,556", "1 Day Ago": "31,693", "2 Days Ago": "112,827", "Net Change": "-2,556", "Summary / Action": "sold net", "Bias": "bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Futures", "Today": "46", "1 Day Ago": "-156,950", "2 Days Ago": "-158,184", "Net Change": "46", "Summary / Action": "sold net", "Bias": "bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Calls", "Today": "1,234", "1 Day Ago": "12,430", "2 Days Ago": "11,062", "Net Change": "1,234", "Summary / Action": "sold net", "Bias": "bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Puts", "Today": "1,368", "1 Day Ago": "-1,042", "2 Days Ago": "-425", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bearish"},
+        
+        {"Participant Group": "FII", "Instrument": "Stock Futures", "Today": "44,831", "1 Day Ago": "143,821", "2 Days Ago": "-46,475", "Net Change": "31,092", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "FII", "Instrument": "Index Futures", "Today": "1,234", "1 Day Ago": "70", "2 Days Ago": "70", "Net Change": "1,234", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "FII", "Instrument": "Index Calls", "Today": "31,092", "1 Day Ago": "45,156", "2 Days Ago": "-37,490", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "FII", "Instrument": "Index Puts", "Today": "-32,608", "1 Day Ago": "135,315", "2 Days Ago": "124,094", "Net Change": "-32,608", "Summary / Action": "bought net", "Bias": "bearish"},
+
+        {"Participant Group": "Pros", "Instrument": "Stock Futures", "Today": "2,019", "1 Day Ago": "168,384", "2 Days Ago": "24,774", "Net Change": "2,019", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Futures", "Today": "1,368", "1 Day Ago": "228,577", "D Days Ago": "226,335", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Calls", "Today": "159,906", "1 Day Ago": "64,753", "2 Days Ago": "27,207", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Puts", "Today": "2,242", "1 Day Ago": "57,325", "2 Days Ago": "65,365", "Net Change": "2,242", "Summary / Action": "bought net", "Bias": "bearish"},
+
+        {"Participant Group": "DIIs", "Instrument": "Stock Futures", "Today": "-25,949", "1 Day Ago": "3,965,038", "2 Days Ago": "2,189,552", "Net Change": "-25,949", "Summary / Action": "sold net", "Bias": "bearish"},
+        {"Participant Group": "DIIs", "Instrument": "Index Futures", "Today": "-46", "1 Day Ago": "1,306,016", "2 Days Ago": "2,179,216", "Net Change": "-46", "Summary / Action": "sold net", "Bias": "bearish"}
+    ]
+    
+    st.dataframe(pd.DataFrame(excel_sheet_data), use_container_width=True)
 
     d_list = [(datetime.today() - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
     inst_records = [
@@ -353,23 +361,4 @@ with t4:
     fig_o = go.Figure()
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Call OI"], name="Call OI", marker_color="#f43f5e"))
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Put OI"], name="Put OI", marker_color="#10b981"))
-    fig_o.update_layout(barmode="group", height=240, template=plotly_template, margin=dict(l=10, r=10, t=30, b=10))
-    st.plotly_chart(fig_o, use_container_width=True)
-
-with t5:
-    st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
-    st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો.")
-    
-    default_rules_text = get_db_val("custom_trading_rules") or (
-        "1. Never take a revenge trade after a loss.\n"
-        "2. Always respect predefined Stop Loss.\n"
-        "3. Wait patiently for liquidity sweeps/Order blocks.\n"
-        "4. Stop trading for the day after hitting Daily Max Loss."
-    )
-    
-    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
-    
-    if st.button("Save & Update Rules"):
-        set_db_val("custom_trading_rules", edited_rules)
-        st.success("તમારા નિયમો સફળતાપૂર્વક અપડેટ અને સેવ થઈ ગયા છે!")
-
+    fig_o.update_layout(barmode="group", height=240, template=plotly_template, margin=dict(l=10
