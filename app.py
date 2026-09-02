@@ -88,6 +88,25 @@ def init_db():
 
 init_db()
 
+# ગ્લોબલ ફંક્શન્સ (એરર વગર જર્નલ સેવ અને લોડ કરવા માટે)
+def load_daily_notes():
+    JOURNAL_TEXT_FILE = "daily_notes.json"
+    if os.path.exists(JOURNAL_TEXT_FILE):
+        try:
+            with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
+                content = f.read()
+                if not content.strip():
+                    return {}
+                return json.loads(content)
+        except:
+            return {}
+    return {}
+
+def save_daily_notes(notes_dict):
+    JOURNAL_TEXT_FILE = "daily_notes.json"
+    with open(JOURNAL_TEXT_FILE, "w", encoding="utf-8") as f:
+        json.dump(notes_dict, f, indent=4)
+
 def get_db_val(k):
     conn = sqlite3.connect("journal.db")
     c = conn.cursor()
@@ -184,7 +203,6 @@ set_db_val("tot_cap", str(total_capital))
 set_db_val("risk_pct", str(risk_pct))
 set_db_val("max_trades", str(max_allowed_trades))
 
-# તારીખ પસંદગી ઓપ્શન (ગઈકાલના કે જૂના ટ્રેડ્સ સિંક કરવા માટે)
 sync_date = st.sidebar.date_input("Sync Trade Date", datetime.today())
 
 if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
@@ -282,24 +300,6 @@ with t1:
     st.markdown("---")
     st.subheader("📖 Daily Trading Journal & Psychology Notes")
 
-    JOURNAL_TEXT_FILE = "daily_notes.json"
-
-    def load_daily_notes():
-        if os.path.exists(JOURNAL_TEXT_FILE):
-            try:
-                with open(JOURNAL_TEXT_FILE, "r", encoding="utf-8") as f:
-                    content = f.read()
-                    if not content.strip():
-                        return {}
-                    return json.loads(content)
-            except:
-                return {}
-        return {}
-
-    def save_daily_notes(notes_dict):
-        with open(JOURNAL_TEXT_FILE, "w", encoding="utf-8") as f:
-            json.dump(notes_dict, f, indent=4)
-
     all_notes = load_daily_notes()
 
     today_date = str(datetime.today().date())
@@ -316,7 +316,7 @@ with t1:
     st.markdown("---")
     st.markdown("### 📈 Weekly & Monthly Trading Performance")
 
-    if os.path.exists(JOURNAL_TEXT_FILE) and len(all_notes) > 0:
+    if os.path.exists("daily_notes.json") and len(all_notes) > 0:
         notes_df = pd.DataFrame(list(all_notes.items()), columns=["Date", "Notes"])
         notes_df["Date"] = pd.to_datetime(notes_df["Date"])
         
