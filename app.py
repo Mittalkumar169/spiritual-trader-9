@@ -11,10 +11,6 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-# ==============================================================================
-# 🚀 SPIRITUAL TRADER PRO - MASTER TERMINAL
-# ==============================================================================
-
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
     page_icon="⚡",
@@ -22,9 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ------------------------------------------------------------------------------
-# 🎨 OBSIDIAN PRO DARK THEME
-# ------------------------------------------------------------------------------
 st.markdown("""
 <style>
     .block-container {
@@ -62,9 +55,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------
-# 🔐 AUTHENTICATION
-# ------------------------------------------------------------------------------
 def check_password():
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
@@ -100,9 +90,6 @@ def check_password():
 if not check_password():
     st.stop()
 
-# ------------------------------------------------------------------------------
-# 🗄️ DATABASE ENGINE
-# ------------------------------------------------------------------------------
 def init_db():
     conn = sqlite3.connect("journal.db")
     c = conn.cursor()
@@ -157,9 +144,6 @@ def save_profile_photo(b64_str):
     conn.commit()
     conn.close()
 
-# ------------------------------------------------------------------------------
-# 🏦 NSE INSTITUTIONAL DATA & OPTION CHAIN LOGIC
-# ------------------------------------------------------------------------------
 def get_participant_data():
     today = datetime.today()
     dates = [(today - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
@@ -198,11 +182,8 @@ def get_active_option_chain():
         })
     return pd.DataFrame(rows), spot, vix
 
-# ------------------------------------------------------------------------------
-# 👤 SIDEBAR: USER PROFILE & SETTINGS
-# ------------------------------------------------------------------------------
+# સાઇડબાર પ્રોફાઇલ
 profile_img_data = get_profile_photo()
-
 st.sidebar.markdown("<div style='text-align: center; margin-bottom: 10px;'>", unsafe_allow_html=True)
 if profile_img_data:
     st.sidebar.markdown(f"""
@@ -233,8 +214,6 @@ with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
         st.rerun()
 
 st.sidebar.markdown("---")
-
-# 🛡️ RISK SHIELD & FYERS SYNC
 st.sidebar.markdown("<h4 style='color:#38bdf8; margin:0;'>🛡️ Capital & Risk Shield</h4>", unsafe_allow_html=True)
 user_capital = st.sidebar.number_input("Total Capital (₹)", min_value=10000.0, value=100000.0, step=5000.0)
 risk_pct = st.sidebar.slider("Max Risk Per Trade (%)", 0.5, 3.0, 1.5, 0.25)
@@ -301,9 +280,6 @@ if st.sidebar.button("Clear All Stored Records", use_container_width=True):
     st.sidebar.success("All records cleared!")
     st.rerun()
 
-# ------------------------------------------------------------------------------
-# 💻 TOP COMPACT TERMINAL HEADER
-# ------------------------------------------------------------------------------
 st.markdown("""
 <div style="display:flex; justify-content:space-between; align-items:center; background:#111827; padding:6px 12px; border-radius:6px; border:1px solid #1f2937; margin-bottom:8px;">
     <div style="font-weight:700; font-size:16px; color:#38bdf8;">⚡ SPIRITUAL TRADER PRO TERMINAL</div>
@@ -311,9 +287,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------
-# 📑 6 FULL COMPLETE TABS
-# ------------------------------------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Comprehensive Journal & Analytics",
     "⚡ New Trade Execution / Fast Log",
@@ -323,7 +296,6 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🤖 AI Assistant"
 ])
 
-# ==================== TAB 1: JOURNAL & ANALYTICS ====================
 with tab1:
     conn = sqlite3.connect("journal.db")
     df = pd.read_sql_query("SELECT * FROM trades ORDER BY trade_date ASC, id ASC", conn)
@@ -370,7 +342,6 @@ with tab1:
     else:
         st.info("💡 જર્નલ સંપૂર્ણ ક્લીન છે. સાઇડબારમાંથી 'Sync Today's Trades' ક્લિક કરીને ઓર્ડર્સ લાવો અથવા બીજા ટેબમાંથી નવો ટ્રેડ એડ કરો.")
 
-# ==================== TAB 2: NEW TRADE ENTRY ====================
 with tab2:
     st.markdown("### ⚡ Fast New Trade Execution & Detailed Log")
     
@@ -406,4 +377,33 @@ with tab2:
             t_tgt = st.number_input("Target Price (₹)", value=180.0, step=0.5)
             t_qty = st.number_input("Quantity", value=int(rec_qty), step=25)
 
-        f4, f5,
+        f4, f5, f6 = st.columns(3)
+        with f4:
+            t_setup = st.selectbox("Setup Type", ["Order Block (OB)", "Fair Value Gap (FVG)", "Liquidity Sweep", "Break of Structure (BOS)", "Change of Character (CHoCH)"])
+        with f5:
+            t_emotion = st.selectbox("Entry Emotion", ["Disciplined", "FOMO", "Impulsive", "Revenge"])
+        with f6:
+            t_rule = st.selectbox("Rule Followed?", ["Yes (100%)", "No (Violated SL)", "Overtraded"])
+
+        t_notes = st.text_input("Trade Notes", "Clean 5m Order Block retest confirmation.")
+        chart_file = st.file_uploader("Upload Chart Screenshot (Optional)", type=["png", "jpg", "jpeg"])
+        
+        submit_trade = st.form_submit_button("🚀 SAVE & LOG TRADE", use_container_width=True)
+        if submit_trade:
+            risk = abs(t_entry - t_sl) if abs(t_entry - t_sl) > 0 else 1.0
+            reward = abs(t_tgt - t_entry)
+            rr = round(reward / risk, 2)
+            calc_pnl = (t_exit - t_entry) * t_qty if "BUY" in t_type else (t_entry - t_exit) * t_qty
+            
+            img_b64 = None
+            if chart_file is not None:
+                img_b64 = base64.b64encode(chart_file.read()).decode()
+
+            conn = sqlite3.connect("journal.db")
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity,
+                                    entry_price, exit_price, stop_loss, target_price, risk_reward,
+                                    pnl, setup_type, entry_emotion, exit_reason, rule_followed,
+                                    trade_grade, setup_notes, execution_type, chart_img)
+                VALUES (?, ?, ?, ?, ?,
