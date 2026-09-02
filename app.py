@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -127,6 +128,19 @@ with st.sidebar.expander("📷 Edit Profile Photo", expanded=False):
                 st.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
+st.sidebar.markdown("<b>🛡️ Capital & Risk Management Rules</b>", unsafe_allow_html=True)
+total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=float(get_db_val("tot_cap") or 10000.0), step=1000.0)
+risk_pct = st.sidebar.slider("Max Risk per Trade (%)", 0.5, 5.0, float(get_db_val("risk_pct") or 2.0), 0.5)
+max_allowed_trades = st.sidebar.number_input("Max Trades Limit / Day", min_value=1, max_value=20, value=int(get_db_val("max_trades") or 3))
+
+max_risk_amt = (total_capital * risk_pct) / 100.0
+st.sidebar.info(f"💡 Per Trade Max Risk: ₹{max_risk_amt:,.0f}")
+
+set_db_val("tot_cap", str(total_capital))
+set_db_val("risk_pct", str(risk_pct))
+set_db_val("max_trades", str(max_allowed_trades))
+
+st.sidebar.markdown("---")
 st.sidebar.markdown("<b>⚡ Fyers Live Connect</b>", unsafe_allow_html=True)
 app_id_val = st.sidebar.text_input("App ID", value=get_db_val("f_app_id") or "8THHZH0S7K-200")
 sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or "RVdcb1TLXE7r9ftE", type="password")
@@ -154,7 +168,7 @@ live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
+if st.sidebar.button("🔄 Sync Today's Trades & Audit", use_container_width=True):
     if app_id_val and live_tok:
         try:
             r = requests.get("https://api-t1.fyers.in/api/v3/positions", headers={"Authorization": f"{app_id_val}:{live_tok}"})
@@ -168,6 +182,8 @@ if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
                     cur = conn.cursor()
                     ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     c_cnt = 0
+                    today_str = datetime.today().strftime("%Y-%m-%d")
+                    
                     for pos in net_positions:
                         sym = pos.get("symbol", "")
                         qty = abs(pos.get("netQty", 0)) or abs(pos.get("qty", 0))
@@ -176,16 +192,35 @@ if st.sidebar.button("🔄 Sync Today's Trades", use_container_width=True):
                         pnl_val = pos.get("pl", 0.0)
                         side_str = "BUY" if pos.get("side", 1) == 1 else "SELL"
                         
-                        cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, datetime.today().strftime("%Y-%m-%d")))
+                        cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, today_str))
                         if not cur.fetchone() and (qty > 0 or pnl_val != 0):
                             entry_p = buy_avg if buy_avg > 0 else sell_avg
                             exit_p = sell_avg if sell_avg > 0 else buy_avg
-                            v = (datetime.today().strftime("%Y-%m-%d"), "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", "Yes (100%)", "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
+                            
+                            # Automated Rule & Risk Audit Evaluation
+                            rule_status = "Yes (100%)"
+                            violations = []
+                            
+                            if pnl_val < 0 and abs(pnl_val) > max_risk_amt:
+                                violations.append(f"Risk Limit Crossed (Loss: ₹{abs(pnl_val):,.0f} > Max: ₹{max_risk_amt:,.0f})")
+                                rule_status = "No (Risk Violated)"
+
+                            v = (today_str, "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", rule_status, "A+", f"FYERS_AUTO_{sym} " + " | ".join(violations), "FYERS_AUTO", None)
                             cur.execute(ins_sql, v)
                             c_cnt += 1
+                            
                     conn.commit()
+                    
+                    # Check Daily Overtrading Limit Audit
+                    cur.execute("SELECT COUNT(*) FROM trades WHERE trade_date = ?", (today_str,))
+                    total_today_trades = cur.fetchone()[0]
                     conn.close()
-                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ ઓટોમેટિક સિંક થયા!")
+                    
+                    audit_msg = f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા!"
+                    if total_today_trades > max_allowed_trades:
+                        audit_msg += f" ⚠️ ઓવરટ્રેડિંગ એલર્ટ: આજે તમે {max_allowed_trades} ની મર્યાદા સામે {total_total_trades if 'total_total_trades' in locals() else total_today_trades} ટ્રેડ લીધા છે!"
+                    
+                    st.sidebar.warning(audit_msg)
                     st.rerun()
             else:
                 st.sidebar.error("Fyers API Error")
@@ -237,11 +272,11 @@ with t1:
         fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Growth Curve (₹)")
         fig_eq.update_layout(template=plotly_template, height=220, margin=dict(l=10, r=10, t=30, b=10))
         st.plotly_chart(fig_eq, use_container_width=True)
-        st.markdown("<b>📋 Synced Trades Log</b>", unsafe_allow_html=True)
-        st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "entry_price", "exit_price", "pnl", "rule_followed"]], use_container_width=True)
+        st.markdown("<b>📋 Synced Trades Log & Automated Audit Report</b>", unsafe_allow_html=True)
+        st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "pnl", "rule_followed", "setup_notes"]], use_container_width=True)
         st.download_button("📥 Export Journal CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
     else:
-        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Today's Trades' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
+        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Today's Trades & Audit' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
 
 with t2:
     st.markdown("<b>🔍 Performance & Behavioral Insights</b>", unsafe_allow_html=True)
@@ -291,8 +326,10 @@ with t4:
     st.plotly_chart(fig_o, use_container_width=True)
 
 with t5:
-    st.markdown("<b>🛡️ AI & Custom Trading Rules Editor</b>", unsafe_allow_html=True)
-    st.write("તમારા ટ્રેડિંગ નિયમો નીચે એડિટ કરો, બદલો અથવા નવા ઉમેરો:")
+    st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
+    st.write("સાઇડબારમાં તમે તમારી **Total Capital (₹)**, **Max Risk per Trade (%)** અને **Max Trades Limit / Day** સેટ કરી દીધા છે. જ્યારે તમે Fyers માંથી ટ્રેડ્સ સિંક કરશો, ત્યારે સોફ્ટવેર ઓટોમેટિક આ રૂલ્સ સાથે ઓડિટ કરીને ભૂલો પકડી લેશે:")
+    st.markdown("1. જો કુલ ટ્રેડ્સની સંખ્યા તમારી લિમિટથી વધી જશે, તો તે **Overtrading Warning** આપશે.")
+    st.markdown("2. જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે લોગમાં **Risk Limit Crossed** નોંધી દેશે.")
     
     default_rules_text = get_db_val("custom_trading_rules") or (
         "1. Never take a revenge trade after a loss.\n"
