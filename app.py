@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -197,7 +196,6 @@ if st.sidebar.button("🔄 Sync Today's Trades & Audit", use_container_width=Tru
                             entry_p = buy_avg if buy_avg > 0 else sell_avg
                             exit_p = sell_avg if sell_avg > 0 else buy_avg
                             
-                            # Automated Rule & Risk Audit Evaluation
                             rule_status = "Yes (100%)"
                             violations = []
                             
@@ -211,14 +209,13 @@ if st.sidebar.button("🔄 Sync Today's Trades & Audit", use_container_width=Tru
                             
                     conn.commit()
                     
-                    # Check Daily Overtrading Limit Audit
                     cur.execute("SELECT COUNT(*) FROM trades WHERE trade_date = ?", (today_str,))
                     total_today_trades = cur.fetchone()[0]
                     conn.close()
                     
                     audit_msg = f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા!"
                     if total_today_trades > max_allowed_trades:
-                        audit_msg += f" ⚠️ ઓવરટ્રેડિંગ એલર્ટ: આજે તમે {max_allowed_trades} ની મર્યાદા સામે {total_total_trades if 'total_total_trades' in locals() else total_today_trades} ટ્રેડ લીધા છે!"
+                        audit_msg += f" ⚠️ ઓવરટ્રેડિંગ એલર્ટ: આજે તમે {max_allowed_trades} ની મર્યાદા સામે {total_today_trades} ટ્રેડ લીધા છે!"
                     
                     st.sidebar.warning(audit_msg)
                     st.rerun()
@@ -327,9 +324,9 @@ with t4:
 
 with t5:
     st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
-    st.write("સાઇડબારમાં તમે તમારી **Total Capital (₹)**, **Max Risk per Trade (%)** અને **Max Trades Limit / Day** સેટ કરી દીધા છે. જ્યારે તમે Fyers માંથી ટ્રેડ્સ સિંક કરશો, ત્યારે સોફ્ટવેર ઓટોમેટિક આ રૂલ્સ સાથે ઓડિટ કરીને ભૂલો પકડી લેશે:")
-    st.markdown("1. જો કુલ ટ્રેડ્સની સંખ્યા તમારી લિમિટથી વધી જશે, તો તે **Overtrading Warning** આપશે.")
-    st.markdown("2. જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે લોગમાં **Risk Limit Crossed** નોંધી દેશે.")
+    st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો. જ્યારે તમે Fyers માંથી ટ્રેડ્સ સિંક કરશો, ત્યારે આ ઓટોમેટેડ ઓડિટર તમારી ભૂલો પકડીને જર્નલમાં નોંધી દેશે:")
+    st.markdown("1. **Overtrading Check:** નક્કી કરેલા મહત્તમ ટ્રેડ્સ કરતા વધારે ટ્રેડ થયા હશે તો એલર્ટ આપશે.")
+    st.markdown("2. **Risk Management Check:** જો કોઈ ટ્રેડમાં નુકસાન કેપિટલના ટકાવારી રિસ્ક કરતા વધી જશે, તો તે 'Risk Limit Crossed' તરીકે ફ્લેગ થશે.")
     
     default_rules_text = get_db_val("custom_trading_rules") or (
         "1. Never take a revenge trade after a loss.\n"
