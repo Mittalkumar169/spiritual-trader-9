@@ -12,7 +12,7 @@ import requests
 import streamlit as st
 
 # ==============================================================================
-# 🚀 SPIRITUAL TRADER PRO - MASTER TERMINAL WITH USER PROFILE PHOTO
+# 🚀 SPIRITUAL TRADER PRO - MASTER TERMINAL
 # ==============================================================================
 
 st.set_page_config(
@@ -404,4 +404,6 @@ with tab2:
         with f3:
             t_sl = st.number_input("Stop Loss (₹)", value=float(c_sl), step=0.5)
             t_tgt = st.number_input("Target Price (₹)", value=180.0, step=0.5)
-            t_qty = st.number_input("Quantity", value=int(rec_qty), s
+            t_qty = st.number_input("Quantity", value=int(rec_qty), step=25)
+
+        f4, f5,
