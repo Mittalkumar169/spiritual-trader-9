@@ -108,13 +108,11 @@ else:
 st.sidebar.markdown("<div style='text-align:center;font-weight:bold;'>Lead Institutional Trader</div>", unsafe_allow_html=True)
 
 with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
-    with st.form("photo_form"):
-        up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"])
-        submitted = st.form_submit_button("Upload Photo", use_container_width=True)
-        if submitted and up_img:
-            set_db_val("profile_pic", base64.b64encode(up_img.read()).decode())
-            st.success("Photo Updated Successfully!")
-            st.rerun()
+    up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="p_uploader")
+    if up_img:
+        set_db_val("profile_pic", base64.b64encode(up_img.read()).decode())
+        st.success("Photo Updated!")
+        st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<b>🛡️ Capital & Risk</b>", unsafe_allow_html=True)
