@@ -401,4 +401,4 @@ with tab1:
         session_stats = []
         for s in sessions:
             prefix = s.split(" ")[0]
-            s_df = filtered_df[filtered_df["session"].st
+            s_df = filtered_df[filtered_df["session"].str.contains(prefix,case=False,na=False)]
