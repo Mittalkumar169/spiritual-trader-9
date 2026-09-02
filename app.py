@@ -294,7 +294,7 @@ with t2:
         st.info("એનાલિટિક્સ જોવા માટે પહેલાં ટ્રેડ્સ સિંક કરો.")
 
 with t3:
-    st.markdown("<b>🏦 Participant-wise Open Interest & Excel Summary Matrix (Custom Sheet Layout)</b>", unsafe_allow_html=True)
+    st.markdown("<b>🏦 Participant-wise Open Interest & Summary Matrix</b>", unsafe_allow_html=True)
     
     st.markdown("""
     <div style="background-color:#1e293b; padding: 14px; border-radius: 8px; border-left: 5px solid #2563eb; margin-bottom: 15px;">
@@ -311,26 +311,24 @@ with t3:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 📋 Participant-wise OI Summary Sheet (Excel Format)")
-    
     excel_sheet_data = [
-        {"Participant Group": "Clients (Retail)", "Instrument": "Stock Futures", "Today": "-2,556", "1 Day Ago": "31,693", "2 Days Ago": "112,827", "Net Change": "-2,556", "Summary / Action": "sold net", "Bias": "bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Futures", "Today": "46", "1 Day Ago": "-156,950", "2 Days Ago": "-158,184", "Net Change": "46", "Summary / Action": "sold net", "Bias": "bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Calls", "Today": "1,234", "1 Day Ago": "12,430", "2 Days Ago": "11,062", "Net Change": "1,234", "Summary / Action": "sold net", "Bias": "bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Puts", "Today": "1,368", "1 Day Ago": "-1,042", "2 Days Ago": "-425", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Stock Futures", "Today": "-2,556", "1 Day Ago": "31,693", "2 Days Ago": "112,827", "Net Change": "-2,556", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Futures", "Today": "46", "1 Day Ago": "-156,950", "2 Days Ago": "-158,184", "Net Change": "46", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Calls", "Today": "1,234", "1 Day Ago": "12,430", "2 Days Ago": "11,062", "Net Change": "1,234", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
+        {"Participant Group": "Clients (Retail)", "Instrument": "Index Puts", "Today": "1,368", "1 Day Ago": "-1,042", "2 Days Ago": "-425", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "🔴 bearish"},
         
-        {"Participant Group": "FII", "Instrument": "Stock Futures", "Today": "44,831", "1 Day Ago": "143,821", "2 Days Ago": "-46,475", "Net Change": "31,092", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "FII", "Instrument": "Index Futures", "Today": "1,234", "1 Day Ago": "70", "2 Days Ago": "70", "Net Change": "1,234", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "FII", "Instrument": "Index Calls", "Today": "31,092", "1 Day Ago": "45,156", "2 Days Ago": "-37,490", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "FII", "Instrument": "Index Puts", "Today": "-32,608", "1 Day Ago": "135,315", "2 Days Ago": "124,094", "Net Change": "-32,608", "Summary / Action": "bought net", "Bias": "bearish"},
+        {"Participant Group": "FII", "Instrument": "Stock Futures", "Today": "44,831", "1 Day Ago": "143,821", "2 Days Ago": "-46,475", "Net Change": "31,092", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
+        {"Participant Group": "FII", "Instrument": "Index Futures", "Today": "1,234", "1 Day Ago": "70", "2 Days Ago": "70", "Net Change": "1,234", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
+        {"Participant Group": "FII", "Instrument": "Index Calls", "Today": "31,092", "1 Day Ago": "45,156", "2 Days Ago": "-37,490", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
+        {"Participant Group": "FII", "Instrument": "Index Puts", "Today": "-32,608", "1 Day Ago": "135,315", "2 Days Ago": "124,094", "Net Change": "-32,608", "Summary / Action": "bought net", "Bias": "🔴 bearish"},
 
-        {"Participant Group": "Pros", "Instrument": "Stock Futures", "Today": "2,019", "1 Day Ago": "168,384", "2 Days Ago": "24,774", "Net Change": "2,019", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Futures", "Today": "1,368", "1 Day Ago": "228,577", "2 Days Ago": "226,335", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Calls", "Today": "159,906", "1 Day Ago": "64,753", "2 Days Ago": "27,207", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Puts", "Today": "2,242", "1 Day Ago": "57,325", "2 Days Ago": "65,365", "Net Change": "2,242", "Summary / Action": "bought net", "Bias": "bearish"},
+        {"Participant Group": "Pros", "Instrument": "Stock Futures", "Today": "2,019", "1 Day Ago": "168,384", "2 Days Ago": "24,774", "Net Change": "2,019", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Futures", "Today": "1,368", "1 Day Ago": "228,577", "2 Days Ago": "226,335", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Calls", "Today": "159,906", "1 Day Ago": "64,753", "2 Days Ago": "27,207", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
+        {"Participant Group": "Pros", "Instrument": "Index Puts", "Today": "2,242", "1 Day Ago": "57,325", "2 Days Ago": "65,365", "Net Change": "2,242", "Summary / Action": "bought net", "Bias": "🔴 bearish"},
 
-        {"Participant Group": "DIIs", "Instrument": "Stock Futures", "Today": "-25,949", "1 Day Ago": "3,965,038", "2 Days Ago": "2,189,552", "Net Change": "-25,949", "Summary / Action": "sold net", "Bias": "bearish"},
-        {"Participant Group": "DIIs", "Instrument": "Index Futures", "Today": "-46", "1 Day Ago": "1,306,016", "2 Days Ago": "2,179,216", "Net Change": "-46", "Summary / Action": "sold net", "Bias": "bearish"}
+        {"Participant Group": "DIIs", "Instrument": "Stock Futures", "Today": "-25,949", "1 Day Ago": "3,965,038", "2 Days Ago": "2,189,552", "Net Change": "-25,949", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
+        {"Participant Group": "DIIs", "Instrument": "Index Futures", "Today": "-46", "1 Day Ago": "1,306,016", "2 Days Ago": "2,179,216", "Net Change": "-46", "Summary / Action": "sold net", "Bias": "🔴 bearish"}
     ]
     
     st.dataframe(pd.DataFrame(excel_sheet_data), use_container_width=True)
@@ -350,6 +348,8 @@ with t3:
     fig_inst = px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group", title="3-Day Participant Net Sentiment Flow Analysis")
     fig_inst.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
     st.plotly_chart(fig_inst, use_container_width=True)
+
+
 
 with t4:
     st.info("NIFTY Spot: 24,850 | INDIA VIX: 13.85 | Bias: Bullish Support at 24,800")
