@@ -1,4 +1,60 @@
 
+import json
+import os
+
+def evening_trade_audit_report(file_path="trade_journal.json"):
+    # आपके फिक्स किए हुए नियम (हार्डકોડેડ)
+    MAX_TRADES = 3
+    MAX_LOSS = 1500.0
+    MAX_PER_RISK = 500.0
+
+    if not os.path.exists(file_path):
+        print("📭 आज की ट्रेड फ़ाइल या जर्नल डेटा नहीं मिला.")
+        return
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            trades = json.load(f)
+    except Exception as e:
+        print(f"❌ डेटा पढ़ने में एरर: {e}")
+        return
+
+    total_trades = len(trades)
+    total_pnl = sum(t.get('pnl', 0) for t in trades)
+
+    print("\n========================================")
+    print(" 📊 शाम का ट्रेड ऑडिट रिपोर्ट ")
+    print("========================================")
+    
+    # ૧. ઓવરટ્રેડિંગ ચેક
+    if total_trades > MAX_TRADES:
+        print(f"⚠️ गलती: आपने तय सीमा ({MAX_TRADES}) से ज्यादा ट्रेड किए! कुल ट्रेड: {total_trades}")
+    else:
+        print(f"✅ ट्रेड काउंट सही था ({total_trades}/{MAX_TRADES}).")
+
+    # ૨. પર ટ્રેડ રિસ્ક ચેક
+    mistake_found = False
+    for i, trade in enumerate(trades, 1):
+        risk = trade.get('risk_amount', 0)
+        if risk > MAX_PER_RISK:
+            print(f"⚠️ गलती [ટ્રેડ #{i}]: इस ट्रेड में रिस्क (₹{risk}) तय लिमिट (₹{MAX_PER_RISK}) से ज्यादा था!")
+            mistake_found = True
+
+    # ૩. કુલ નુકસાન ચેક
+    if total_pnl <= -MAX_LOSS:
+        print(f"⚠️ गलती: आज का कुल नुकसान (₹{abs(total_pnl)}) मैक्स लॉस लिमिट (₹{MAX_LOSS}) से ज्यादा हो गया था!")
+        mistake_found = True
+
+    if not mistake_found and total_trades <= MAX_TRADES:
+        print("🌟 बहुत बढ़िया! आज आपने सभी नियमों का पूरी तरह पालन किया है, कोई गलती नहीं मिली।")
+
+    print(f"💰 आज का कुल P&L: ₹{total_pnl}")
+    print("========================================\n")
+
+# शाम को जब आप ट्रेड सिंक करवाएं, तब सिर्फ इस फังก์ชัน को रन कर लें:
+# evening_trade_audit_report()
+
+
 import base64
 import hashlib
 import io
