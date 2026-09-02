@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -17,14 +18,33 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
+theme_mode = st.sidebar.selectbox("🎨 Display Theme", ["Dark Mode", "Light Mode"])
+
+if theme_mode == "Dark Mode":
+    bg_color = "#0b0f19"
+    text_color = "#e2e8f0"
+    sidebar_bg = "#111827"
+    metric_bg = "#1e293b"
+    tab_bg = "#161f30"
+    border_col = "#1f2937"
+    plotly_template = "plotly_dark"
+else:
+    bg_color = "#f8fafc"
+    text_color = "#0f172a"
+    sidebar_bg = "#f1f5f9"
+    metric_bg = "#ffffff"
+    tab_bg = "#e2e8f0"
+    border_col = "#cbd5e1"
+    plotly_template = "plotly"
+
+st.markdown(f"""
 <style>
-    .block-container { padding: 0.5rem 0.8rem !important; max-width: 100% !important; }
-    .stApp { background-color: #0b0f19; color: #e2e8f0; font-family: sans-serif; }
-    section[data-testid="stSidebar"] { background-color: #111827 !important; border-right: 1px solid #1f2937; }
-    div[data-testid="stMetric"] { background: #1e293b; border: 1px solid #334155; padding: 8px !important; border-radius: 8px; }
-    .stTabs [data-baseweb="tab"] { height: 35px; border-radius: 6px; background-color: #161f30; color: #94a3b8; }
-    .stTabs [aria-selected="true"] { background: #2563eb !important; color: #ffffff !important; }
+    .block-container {{ padding: 0.5rem 0.8rem !important; max-width: 100% !important; }}
+    .stApp {{ background-color: {bg_color}; color: {text_color}; font-family: sans-serif; }}
+    section[data-testid="stSidebar"] {{ background-color: {sidebar_bg} !important; border-right: 1px solid {border_col}; }}
+    div[data-testid="stMetric"] {{ background: {metric_bg}; border: 1px solid {border_col}; padding: 8px !important; border-radius: 8px; }}
+    .stTabs [data-baseweb="tab"] {{ height: 35px; border-radius: 6px; background-color: {tab_bg}; color: {text_color}; }}
+    .stTabs [aria-selected="true"] {{ background: #2563eb !important; color: #ffffff !important; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -85,14 +105,16 @@ if p_pic:
 else:
     st.sidebar.markdown('<div style="text-align:center;font-size:40px;">👤</div>', unsafe_allow_html=True)
 
-st.sidebar.markdown("<div style='text-align:center;font-weight:bold;color:#f8fafc;'>Lead Institutional Trader</div>", unsafe_allow_html=True)
+st.sidebar.markdown("<div style='text-align:center;font-weight:bold;'>Lead Institutional Trader</div>", unsafe_allow_html=True)
 
 with st.sidebar.expander("📷 Update Profile Photo", expanded=False):
-    up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="p_uploader")
-    if up_img:
-        set_db_val("profile_pic", base64.b64encode(up_img.read()).decode())
-        st.success("Photo Updated!")
-        st.rerun()
+    with st.form("photo_form"):
+        up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"])
+        submitted = st.form_submit_button("Upload Photo", use_container_width=True)
+        if submitted and up_img:
+            set_db_val("profile_pic", base64.b64encode(up_img.read()).decode())
+            st.success("Photo Updated Successfully!")
+            st.rerun()
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("<b>🛡️ Capital & Risk</b>", unsafe_allow_html=True)
@@ -177,7 +199,7 @@ if st.sidebar.button("🗑️ Clear Database Records", use_container_width=True)
     st.sidebar.success("Records Cleared!")
     st.rerun()
 
-st.markdown("<div style='font-size:18px;font-weight:bold;color:#38bdf8;margin-bottom:8px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:18px;font-weight:bold;color:#2563eb;margin-bottom:8px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
 
 t1, t2, t3, t4, t5, t6 = st.tabs([
     "📊 Journal & Analytics",
@@ -210,7 +232,9 @@ with t1:
     if not df.empty:
         df["cum_pnl"] = df["pnl"].cumsum()
         df["trade_no"] = range(1, len(df) + 1)
-        st.plotly_chart(px.area(df, x="trade_no", y="cum_pnl", title="Equity Curve (₹)"), use_container_width=True)
+        fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Curve (₹)")
+        fig_eq.update_layout(template=plotly_template)
+        st.plotly_chart(fig_eq, use_container_width=True)
         st.dataframe(df[["id", "trade_date", "symbol", "session", "trade_type", "quantity", "entry_price", "exit_price", "pnl", "setup_type", "rule_followed"]], use_container_width=True)
         st.download_button("📥 Export CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
     else:
@@ -279,7 +303,9 @@ with t3:
         {"Date": d_list[2], "Client Type": "DII", "Net Sentiment": 28900},
         {"Date": d_list[2], "Client Type": "FII", "Net Sentiment": 118000}
     ]
-    st.plotly_chart(px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group"), use_container_width=True)
+    fig_inst = px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group")
+    fig_inst.update_layout(template=plotly_template)
+    st.plotly_chart(fig_inst, use_container_width=True)
 
 with t4:
     st.info("NIFTY Spot: 24,850 | INDIA VIX: 13.85 | Bias: Bullish Support at 24,800")
@@ -289,7 +315,7 @@ with t4:
     fig_o = go.Figure()
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Call OI"], name="Call OI", marker_color="#f43f5e"))
     fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Put OI"], name="Put OI", marker_color="#10b981"))
-    fig_o.update_layout(barmode="group", height=260)
+    fig_o.update_layout(barmode="group", height=260, template=plotly_template)
     st.plotly_chart(fig_o, use_container_width=True)
 
 with t5:
@@ -297,9 +323,11 @@ with t5:
     df_p = pd.read_sql_query("SELECT * FROM trades", conn)
     conn.close()
     if not df_p.empty:
-        st.plotly_chart(px.pie(df_p, names="rule_followed", title="Discipline Rate"), use_container_width=True)
+        fig_pie = px.pie(df_p, names="rule_followed", title="Discipline Rate")
+        fig_pie.update_layout(template=plotly_template)
+        st.plotly_chart(fig_pie, use_container_width=True)
     else:
-        st.info("એનાલિટિક્સ માટે પહેલાં ટ્રેડ્સ સિંક કરો.")
+        st.info("એનાલિટિક્સ માટે પહેલાં ટ્રેડ્સ લૉગ કરો.")
 
 with t6:
     st.markdown("<b>Spiritual Trader AI Rules</b>", unsafe_allow_html=True)
