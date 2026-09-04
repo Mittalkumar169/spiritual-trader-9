@@ -189,47 +189,47 @@ sync_date = st.sidebar.date_input("Sync Trade Date", datetime.today())
 if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
     if app_id_val and live_tok:
         try:
-            r = requests.get("https://api-t1.fyers.in/api/v3/positions", headers={"Authorization": f"{app_id_val}:{live_tok}"})
-            pos_data = r.json()
-            if pos_data.get("s") == "ok":
-                net_positions = pos_data.get("netPositions", [])
+            r = requests.get("https://api-t1.fyers.in/api/v3/tradebook", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+            trade_data = r.json()
+            
+            if trade_data.get("s") == "ok":
+                trade_list = trade_data.get("tradeBook", [])
                 conn = sqlite3.connect("journal.db")
                 cur = conn.cursor()
                 ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 c_cnt = 0
                 target_date_str = sync_date.strftime("%Y-%m-%d")
                 
-                for pos in net_positions:
-                    sym = pos.get("symbol", "")
-                    qty = abs(pos.get("netQty", 0)) or abs(pos.get("qty", 0))
-                    buy_avg = pos.get("buyAvg", 0.0)
-                    sell_avg = pos.get("sellAvg", 0.0)
-                    pnl_val = pos.get("pl", 0.0)
-                    side_str = "BUY" if pos.get("side", 1) == 1 else "SELL"
+                for t in trade_list:
+                    sym = t.get("symbol", "")
+                    qty = t.get("tradedQty", 0)
+                    price = t.get("tradePrice", 0.0)
+                    side_val = t.get("side", 1)
+                    side_str = "BUY" if side_val == 1 else "SELL"
+                    pnl_val = t.get("pl", 0.0)
                     
-                    # ડેટાબેઝમાં ઓલરેડી આ સિમ્બોલ અને તારીખનો ટ્રેડ સેવ છે કે નહીં તેની ચકાસણી
-                    cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, target_date_str))
-                    if not cur.fetchone() and (qty > 0 or pnl_val != 0):
-                        entry_p = buy_avg if buy_avg > 0 else sell_avg
-                        exit_p = sell_avg if sell_avg > 0 else buy_avg
+                    cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ? AND entry_price = ?", (sym, target_date_str, price))
+                    if not cur.fetchone() and qty > 0:
                         rule_status = "Yes (100%)"
                         if pnl_val < 0 and abs(pnl_val) > max_risk_amt:
                             rule_status = "No (Risk Violated)"
 
-                        v = (target_date_str, "Live Market", "5m", sym, side_str, int(qty), float(entry_p), float(exit_p), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "API Synced", rule_status, "A+", f"FYERS_AUTO_{sym}", "FYERS_AUTO", None)
+                        v = (target_date_str, "Live Market", "5m", sym, side_str, int(qty), float(price), float(price), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "Tradebook Synced", rule_status, "A+", f"FYERS_TB_{sym}", "FYERS_AUTO", None)
                         cur.execute(ins_sql, v)
                         c_cnt += 1
+                        
                 conn.commit()
                 conn.close()
+                
                 if c_cnt > 0:
-                    st.sidebar.success(f"✅ {c_cnt} નવા ટ્રેડ્સ સિંક અને સેવ થયા ({target_date_str})!")
+                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ Tradebook માંથી સિંક થયા ({target_date_str})!")
                 else:
-                    st.sidebar.info("ℹ️ કોઈ નવો ટ્રેડ મળ્યો નથી અથવા આજની તારીખના ટ્રેડ્સ પહેલેથી સેવ છે.")
+                    st.sidebar.info("ℹ️ આ તારીખ માટે Tradebook માં કોઈ નવો ટ્રેડ મળ્યો નથી.")
                 st.rerun()
             else:
-                st.sidebar.error("Fyers API Error")
+                st.sidebar.error("Fyers Tradebook API Error: " + trade_data.get("message", "Unknown error"))
         except Exception as e:
-            st.sidebar.error(str(e))
+            st.sidebar.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
 with st.sidebar.expander("🗑️ Danger Zone", expanded=False):
@@ -381,5 +381,4 @@ with t4:
 with t5:
     st.markdown("<b>🤖 AI & Rule Assistant</b>", unsafe_allow_html=True)
     st.success("Spiritual Trader AI guardrails active. Follow your risk rules!")
-
 
