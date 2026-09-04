@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -189,11 +190,17 @@ sync_date = st.sidebar.date_input("Sync Trade Date", datetime.today())
 if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
     if app_id_val and live_tok:
         try:
-            r = requests.get("https://api-t1.fyers.in/api/v3/tradebook", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+            headers = {"Authorization": f"{app_id_val}:{live_tok}"}
+            r = requests.get("https://api-t1.fyers.in/api/v3/tradebook", headers=headers)
             trade_data = r.json()
+            
+            # ડીબગ કરવા માટે રિસ્પોન્સ પ્રિન્ટ કરો
+            st.sidebar.write("API Response Status:", trade_data.get("s"))
             
             if trade_data.get("s") == "ok":
                 trade_list = trade_data.get("tradeBook", [])
+                st.sidebar.write(f"Total Trades found in Fyers: {len(trade_list)}")
+                
                 conn = sqlite3.connect("journal.db")
                 cur = conn.cursor()
                 ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -222,12 +229,12 @@ if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
                 conn.close()
                 
                 if c_cnt > 0:
-                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ Tradebook માંથી સિંક થયા ({target_date_str})!")
+                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા!")
                 else:
-                    st.sidebar.info("ℹ️ આ તારીખ માટે Tradebook માં કોઈ નવો ટ્રેડ મળ્યો નથી.")
+                    st.sidebar.info("ℹ️ આ તારીખ માટે કોઈ નવો ટ્રેડ ડેટા ન મળ્યો.")
                 st.rerun()
             else:
-                st.sidebar.error("Fyers Tradebook API Error: " + trade_data.get("message", "Unknown error"))
+                st.sidebar.error("API Error: " + str(trade_data))
         except Exception as e:
             st.sidebar.error(f"Error: {e}")
 
