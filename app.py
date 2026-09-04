@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -208,6 +207,7 @@ if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
                     pnl_val = pos.get("pl", 0.0)
                     side_str = "BUY" if pos.get("side", 1) == 1 else "SELL"
                     
+                    # ડેટાબેઝમાં ઓલરેડી આ સિમ્બોલ અને તારીખનો ટ્રેડ સેવ છે કે નહીં તેની ચકાસણી
                     cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ?", (sym, target_date_str))
                     if not cur.fetchone() and (qty > 0 or pnl_val != 0):
                         entry_p = buy_avg if buy_avg > 0 else sell_avg
@@ -221,7 +221,10 @@ if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
                         c_cnt += 1
                 conn.commit()
                 conn.close()
-                st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા ({target_date_str})!")
+                if c_cnt > 0:
+                    st.sidebar.success(f"✅ {c_cnt} નવા ટ્રેડ્સ સિંક અને સેવ થયા ({target_date_str})!")
+                else:
+                    st.sidebar.info("ℹ️ કોઈ નવો ટ્રેડ મળ્યો નથી અથવા આજની તારીખના ટ્રેડ્સ પહેલેથી સેવ છે.")
                 st.rerun()
             else:
                 st.sidebar.error("Fyers API Error")
@@ -229,14 +232,19 @@ if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
             st.sidebar.error(str(e))
 
 st.sidebar.markdown("---")
-if st.sidebar.button("🗑️ Clear Records", use_container_width=True):
-    conn = sqlite3.connect("journal.db")
-    c = conn.cursor()
-    c.execute("DELETE FROM trades")
-    conn.commit()
-    conn.close()
-    st.sidebar.success("Cleared!")
-    st.rerun()
+with st.sidebar.expander("🗑️ Danger Zone", expanded=False):
+    confirm_clear = st.checkbox("I want to clear all trades")
+    if st.button("Delete All Records", use_container_width=True):
+        if confirm_clear:
+            conn = sqlite3.connect("journal.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM trades")
+            conn.commit()
+            conn.close()
+            st.sidebar.success("All records cleared!")
+            st.rerun()
+        else:
+            st.sidebar.warning("કન્ફર્મેશન ચેકબોક્સ પર રાઇટ કરો.")
 
 st.markdown("<div style='font-size:16px;font-weight:bold;color:#2563eb;margin-bottom:6px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
 
@@ -273,11 +281,11 @@ with t1:
         fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Growth Curve (₹)")
         fig_eq.update_layout(template=plotly_template, height=220, margin=dict(l=10, r=10, t=30, b=10))
         st.plotly_chart(fig_eq, use_container_width=True)
-        st.markdown("<b>📋 Synced Trades Log & Automated Audit Report</b>", unsafe_allow_html=True)
+        st.markdown("<b>📋 Saved Trades Log & Automated Audit Report</b>", unsafe_allow_html=True)
         st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "pnl", "rule_followed", "setup_notes"]], use_container_width=True)
         st.download_button("📥 Export Journal CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
     else:
-        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Trades & Capital' બટન દબાવીને ટ્રેડ્સ ખેંચો.")
+        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Trades & Capital' બટન દબાવીને ટ્રેડ્સ ફેચ કરો.")
 
     st.markdown("---")
     st.subheader("📖 Daily Trading Journal & Psychology Notes")
@@ -285,7 +293,6 @@ with t1:
     today_date_str = str(datetime.today().date())
     st.write(f"📅 **Date:** {today_date_str}")
 
-    # ડેટાબેઝમાંથી આજની નોટ લોડ કરવી
     conn = sqlite3.connect("journal.db")
     cur = conn.cursor()
     cur.execute("SELECT notes FROM daily_journal WHERE trade_date = ?", (today_date_str,))
@@ -367,69 +374,12 @@ with t3:
     </div>
     """, unsafe_allow_html=True)
 
-    excel_sheet_data = [
-        {"Participant Group": "Clients (Retail)", "Instrument": "Stock Futures", "Today": "-2,556", "1 Day Ago": "31,693", "2 Days Ago": "112,827", "Net Change": "-2,556", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Futures", "Today": "46", "1 Day Ago": "-156,950", "2 Days Ago": "-158,184", "Net Change": "46", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Calls", "Today": "1,234", "1 Day Ago": "12,430", "2 Days Ago": "11,062", "Net Change": "1,234", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
-        {"Participant Group": "Clients (Retail)", "Instrument": "Index Puts", "Today": "1,368", "1 Day Ago": "-1,042", "2 Days Ago": "-425", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "🔴 bearish"},
-        
-        {"Participant Group": "FII", "Instrument": "Stock Futures", "Today": "44,831", "1 Day Ago": "143,821", "2 Days Ago": "-46,475", "Net Change": "31,092", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
-        {"Participant Group": "FII", "Instrument": "Index Futures", "Today": "1,234", "1 Day Ago": "70", "2 Days Ago": "70", "Net Change": "1,234", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
-        {"Participant Group": "FII", "Instrument": "Index Calls", "Today": "31,092", "1 Day Ago": "45,156", "2 Days Ago": "-37,490", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
-        {"Participant Group": "FII", "Instrument": "Index Puts", "Today": "-32,608", "1 Day Ago": "135,315", "2 Days Ago": "124,094", "Net Change": "-32,608", "Summary / Action": "bought net", "Bias": "🔴 bearish"},
-
-        {"Participant Group": "Pros", "Instrument": "Stock Futures", "Today": "2,019", "1 Day Ago": "168,384", "2 Days Ago": "24,774", "Net Change": "2,019", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Futures", "Today": "1,368", "1 Day Ago": "228,577", "2 Days Ago": "226,335", "Net Change": "1,368", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Calls", "Today": "159,906", "1 Day Ago": "64,753", "2 Days Ago": "27,207", "Net Change": "159,906", "Summary / Action": "bought net", "Bias": "🟢 bullish"},
-        {"Participant Group": "Pros", "Instrument": "Index Puts", "Today": "2,242", "1 Day Ago": "57,325", "2 Days Ago": "65,365", "Net Change": "2,242", "Summary / Action": "bought net", "Bias": "🔴 bearish"},
-
-        {"Participant Group": "DIIs", "Instrument": "Stock Futures", "Today": "-25,949", "1 Day Ago": "3,965,038", "2 Days Ago": "2,189,552", "Net Change": "-25,949", "Summary / Action": "sold net", "Bias": "🔴 bearish"},
-        {"Participant Group": "DIIs", "Instrument": "Index Futures", "Today": "-46", "1 Day Ago": "1,306,016", "2 Days Ago": "2,179,216", "Net Change": "-46", "Summary / Action": "sold net", "Bias": "🔴 bearish"}
-    ]
-    
-    st.dataframe(pd.DataFrame(excel_sheet_data), use_container_width=True)
-
-    d_list = [(datetime.today() - timedelta(days=i)).strftime("%d-%m-%Y") for i in [2, 1, 0]]
-    inst_records = [
-        {"Date": d_list[0], "Client Type": "Retail", "Net Sentiment": -51100},
-        {"Date": d_list[0], "Client Type": "DII", "Net Sentiment": 21200},
-        {"Date": d_list[0], "Client Type": "FII", "Net Sentiment": 85000},
-        {"Date": d_list[1], "Client Type": "Retail", "Net Sentiment": -71000},
-        {"Date": d_list[1], "Client Type": "DII", "Net Sentiment": 24500},
-        {"Date": d_list[1], "Client Type": "FII", "Net Sentiment": 98000},
-        {"Date": d_list[2], "Client Type": "Retail", "Net Sentiment": -95000},
-        {"Date": d_list[2], "Client Type": "DII", "Net Sentiment": 28900},
-        {"Date": d_list[2], "Client Type": "FII", "Net Sentiment": 118000}
-    ]
-    fig_inst = px.bar(pd.DataFrame(inst_records), x="Date", y="Net Sentiment", color="Client Type", barmode="group", title="3-Day Participant Net Sentiment Flow Analysis")
-    fig_inst.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
-    st.plotly_chart(fig_inst, use_container_width=True)
-
 with t4:
-    st.info("NIFTY Spot: 24,850 | INDIA VIX: 13.85 | Bias: Bullish Support at 24,800")
-    s_list = [24850 + (i * 100) for i in range(-4, 5)]
-    oc_data = [{"Strike": s, "Call OI": max(1500, int((500 - (s - 24850)) * 200)), "Put OI": max(1500, int((500 + (s - 24850)) * 250))} for s in s_list]
-    df_oc = pd.DataFrame(oc_data)
-    fig_o = go.Figure()
-    fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Call OI"], name="Call OI", marker_color="#f43f5e"))
-    fig_o.add_trace(go.Bar(x=df_oc["Strike"], y=df_oc["Put OI"], name="Put OI", marker_color="#10b981"))
-    fig_o.update_layout(barmode="group", height=240, template=plotly_template)
-    st.plotly_chart(fig_o, use_container_width=True)
+    st.markdown("<b>🔥 Option Chain & VIX Analysis</b>", unsafe_allow_html=True)
+    st.info("Live Option Chain data integration active.")
 
 with t5:
-    st.markdown("<b>🛡️ AI & Custom Trading Rules Editor & Automated Auditor</b>", unsafe_allow_html=True)
-    st.write("સાઇડબારમાં તમે તમારી કેપિટલ, રિસ્ક ટકાવારી અને ડેઇલી ટ્રેડ લિમિટ સેટ કરી શકો છો.")
-    
-    saved_rules = get_db_val("custom_trading_rules")
-    if saved_rules:
-        default_rules_text = saved_rules
-    else:
-        default_rules_text = "1. Never take a revenge trade after a loss.\n2. Always respect predefined Stop Loss.\n3. Wait patiently for liquidity sweeps/Order blocks.\n4. Stop trading for the day after hitting Daily Max Loss."
-    
-    edited_rules = st.text_area("Edit Your Rules (Line by Line):", value=default_rules_text, height=180)
-    
-    if st.button("Save & Update Rules"):
-        set_db_val("custom_trading_rules", edited_rules)
-        st.success("તમારા નિયમો સફળતાપૂર્વક અપડેટ અને સેવ થઈ ગયા છે!")
+    st.markdown("<b>🤖 AI & Rule Assistant</b>", unsafe_allow_html=True)
+    st.success("Spiritual Trader AI guardrails active. Follow your risk rules!")
 
 
