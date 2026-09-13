@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 import pyotp
 import requests
 import streamlit as st
-from fyers_apiv3 import fyersModel
 
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
@@ -130,23 +129,16 @@ with st.sidebar.expander("📷 Profile Photo", expanded=False):
             st.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("⚡ Fyers Auto Live Connect", unsafe_allow_html=True)
+st.sidebar.markdown("⚡ Fyers Live Connect", unsafe_allow_html=True)
 app_id_val = st.sidebar.text_input("App ID", value=get_db_val("f_app_id") or "8THHZH0S7K-200")
 sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or "RVdcb1TLXE7r9ftE", type="password")
 fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
 fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 Direct Auto Token", expanded=True):
-    if st.button("Generate Current TOTP", use_container_width=True):
-        if fyers_totp_key:
-            totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
-            st.success(f"Current TOTP: {totp_gen.now()}")
-        else:
-            st.warning("Please enter TOTP Key!")
-
-    auth_code_input = st.text_input("Enter Auth Code here", type="default")
-    if st.button("Save Token & Load Capital", use_container_width=True):
-        if auth_code_input and app_id_val and sec_id_val:
+with st.sidebar.expander("🔑 One-Click Connection", expanded=True):
+    manual_auth_code = st.text_input("Paste Fyers Redirect Auth Code here", type="default")
+    if st.button("Connect & Fetch Capital", use_container_width=True):
+        if manual_auth_code and app_id_val and sec_id_val:
             try:
                 set_db_val("f_app_id", app_id_val)
                 set_db_val("f_sec_id", sec_id_val)
@@ -157,18 +149,19 @@ with st.sidebar.expander("🔑 Direct Auto Token", expanded=True):
                 val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
                     "grant_type": "authorization_code",
                     "appIdHash": hash_v,
-                    "code": auth_code_input.strip()
+                    "code": manual_auth_code.strip()
                 }).json()
+                
                 if val_resp.get("s") == "ok":
                     set_db_val("f_token", val_resp["access_token"])
-                    st.success("Token Saved Successfully!")
+                    st.success("Successfully Connected!")
                     st.rerun()
                 else:
-                    st.error("Failed: " + str(val_resp))
+                    st.error("Error: " + str(val_resp.get("message", val_resp)))
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-            st.warning("Please enter Auth Code and API credentials!")
+            st.warning("Please enter the valid Auth Code from Fyers login redirect URL!")
 
 live_tok = get_db_val("f_token")
 if live_tok:
