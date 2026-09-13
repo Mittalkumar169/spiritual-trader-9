@@ -9,7 +9,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
-from fyers_apiv3 import fyersModel
+
+try:
+  from fyers_apiv3 import fyersModel
+except ImportError:
+  fyersModel = None
+
+
 
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
