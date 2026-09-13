@@ -163,7 +163,6 @@ set_db_val("tot_cap", str(total_capital))
 
 st.title("⚡ Spiritual Trader Pro | Terminal & Dashboard")
 
-# Complete feature tabs restored
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "📝 Trade Journal", "📈 Analytics", "🧘 Mindset & Journal", "⚙️ Settings"])
 
 with tab1:
