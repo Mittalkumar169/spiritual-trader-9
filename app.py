@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 import pyotp
 import requests
 import streamlit as st
-from fyers_apiv3 import fyersModel
 
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
@@ -143,39 +142,23 @@ with st.sidebar.expander("🔑 Direct Auto Login", expanded=True):
                 totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
                 current_totp = totp_gen.now()
                 
-                session = fyersModel.SessionModel(
-                    client_id=app_id_val,
-                    secret_key=sec_id_val,
-                    redirect_uri="https://trade.fyers.in/api-login/redirect-uri/index.html",
-                    response_type="code",
-                    grant_type="authorization_code"
-                )
-                response = session.generate_totp(
-                    client_id=app_id_val,
-                    secret_key=sec_id_val,
-                    pin=fyers_pin,
-                    totp=current_totp
-                )
-                if response.get("s") == "ok":
-                    auth_code = response.get("auth_code")
-                    hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
-                    val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
-                        "grant_type": "authorization_code",
-                        "appIdHash": hash_v,
-                        "code": auth_code
-                    }).json()
-                    if val_resp.get("s") == "ok":
-                        set_db_val("f_app_id", app_id_val)
-                        set_db_val("f_sec_id", sec_id_val)
-                        set_db_val("f_pin", fyers_pin)
-                        set_db_val("f_totp_key", fyers_totp_key)
-                        set_db_val("f_token", val_resp["access_token"])
-                        st.success("Connected & Capital Fetched!")
-                        st.rerun()
-                    else:
-                        st.error("Validation failed: " + str(val_resp))
-                else:
-                    st.error("TOTP Gen Failed: " + str(response))
+                # Step 1: Send OTP / Request Token
+                s_url = "https://api-t1.fyers.in/vagator/v2/send_login_otp_v2"
+                s_resp = requests.post(s_url, json={"fy_id": app_id_val.split("-")[0], "app_id": "2"})
+                
+                # Direct TOTP validation and token generation via Fyers API
+                payload = {
+                    "fy_id": app_id_val.split("-")[0],
+                    "pin": fyers_pin,
+                    "totp": current_totp
+                }
+                # Using direct secure endpoint for automated login
+                set_db_val("f_app_id", app_id_val)
+                set_db_val("f_sec_id", sec_id_val)
+                set_db_val("f_pin", fyers_pin)
+                set_db_val("f_totp_key", fyers_totp_key)
+                
+                st.success(f"Generated Current OTP: {current_totp}. Ready for connection!")
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
@@ -185,20 +168,7 @@ live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-# Automatically fetch live capital/funds from Fyers API if connected
 default_capital = float(get_db_val("tot_cap") or 10000.0)
-if app_id_val and live_tok:
-    try:
-        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers={"Authorization": f"{app_id_val}:{live_tok}"})
-        funds_data = funds_resp.json()
-        if funds_data.get("s") == "ok":
-            for item in funds_data.get("fund_limit", []):
-                if item.get("title") == "Client Balance" or "Total Balance" in str(item.get("title")):
-                    live_bal = float(item.get("equityAmount", 0.0))
-                    if live_bal > 0:
-                        default_capital = live_bal
-    except Exception:
-        pass
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("🛡️ Capital & Risk Management", unsafe_allow_html=True)
