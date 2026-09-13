@@ -1,8 +1,1 @@
-pyotp
-fyers-apiv3
-requests
-pandas
-plotly
-streamlit
-
 
