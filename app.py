@@ -136,29 +136,51 @@ sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or 
 fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
 fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 Auto Generate Token", expanded=True):
-    if st.button("Generate Token Automatically", use_container_width=True):
-        if app_id_val and sec_id_val and fyers_pin and fyers_totp_key:
+with st.sidebar.expander("🔑 Generate Daily Token", expanded=True):
+    code_in = st.text_area("Auth Code Here (Or paste generated token)", placeholder="Paste code here")
+    if st.button("Generate & Connect Token", use_container_width=True):
+        if app_id_val and sec_id_val and code_in:
             try:
-                totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
-                current_totp = totp_gen.now()
-                set_db_val("f_app_id", app_id_val)
-                set_db_val("f_sec_id", sec_id_val)
-                set_db_val("f_pin", fyers_pin)
-                set_db_val("f_totp_key", fyers_totp_key)
-                st.success(f"TOTP Configured! Current OTP: {current_totp}")
+                hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
+                resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
+                    "grant_type": "authorization_code",
+                    "appIdHash": hash_v,
+                    "code": code_in.strip()
+                })
+                res_d = resp.json()
+                if res_d.get("s") == "ok" and "access_token" in res_d:
+                    set_db_val("f_app_id", app_id_val)
+                    set_db_val("f_sec_id", sec_id_val)
+                    set_db_val("f_token", res_d["access_token"])
+                    st.success("Live Token Connected Successfully!")
+                    st.rerun()
+                else:
+                    st.error("Error: " + res_d.get("message", "Invalid code"))
             except Exception as e:
                 st.error(f"Error: {e}")
-        else:
-            st.warning("Please fill all credentials!")
 
 live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
+# Automatically fetch live capital/funds from Fyers API if connected
+default_capital = float(get_db_val("tot_cap") or 10000.0)
+if app_id_val and live_tok:
+    try:
+        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+        funds_data = funds_resp.json()
+        if funds_data.get("s") == "ok":
+            for item in funds_data.get("fund_limit", []):
+                if item.get("title") == "Client Balance" or "Total Balance" in str(item.get("title")):
+                    live_bal = float(item.get("equityAmount", 0.0))
+                    if live_bal > 0:
+                        default_capital = live_bal
+    except Exception:
+        pass
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("🛡️ Capital & Risk Management", unsafe_allow_html=True)
-total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=float(get_db_val("tot_cap") or 10000.0), step=1000.0)
+total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=default_capital, step=1000.0)
 set_db_val("tot_cap", str(total_capital))
 
 st.title("⚡ Spiritual Trader Pro | Terminal & Dashboard")
