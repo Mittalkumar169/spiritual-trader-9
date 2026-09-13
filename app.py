@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -132,7 +133,6 @@ st.sidebar.markdown("⚡ Fyers Auto-Pilot Sync", unsafe_allow_html=True)
 app_id_val = st.sidebar.text_input("App ID", value=get_db_val("f_app_id") or "8THHZH0S7K-200")
 sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or "RVdcb1TLXE7r9ftE", type="password")
 
-# Check query params for automated auth code capture (Zero copy-paste workflow)
 query_params = st.query_params
 if "code" in query_params:
     auth_code_extracted = query_params["code"]
@@ -160,12 +160,10 @@ live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-# Automatically fetch live capital and trade history from Fyers API if connected
 default_capital = float(get_db_val("tot_cap") or 10000.0)
 if app_id_val and live_tok:
     headers_dict = {"Authorization": f"{app_id_val}:{live_tok}"}
     try:
-        # Fetch Funds/Capital
         funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers=headers_dict)
         funds_data = funds_resp.json()
         if funds_data.get("s") == "ok":
@@ -178,7 +176,6 @@ if app_id_val and live_tok:
         pass
 
     try:
-        # Fetch Trade History / Order Book from Fyers API
         trades_resp = requests.get("https://api-t1.fyers.in/api/v3/tradebook", headers=headers_dict)
         trades_data = trades_resp.json()
         if trades_data.get("s") == "ok":
@@ -191,7 +188,6 @@ if app_id_val and live_tok:
                 t_prc = float(t_item.get("tradePrice", 0.0))
                 t_time = t_item.get("tradeTime", datetime.now().strftime("%Y-%m-%d"))
                 
-                # Insert fetched trades into database if not already present
                 cur_db.execute("INSERT INTO trades (trade_date, symbol, trade_type, quantity, entry_price, exit_price, pnl, execution_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                                (str(t_time)[:10], sym_name, t_side, t_qty, t_prc, t_prc, 0.0, "FYERS_API"))
             conn_db.commit()
@@ -266,4 +262,3 @@ with tab5:
     st.subheader("System Configurations & Database Controls")
     st.write("Manage your local SQLite database and application settings here.")
 
-Show 
