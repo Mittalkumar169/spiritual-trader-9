@@ -1,4 +1,3 @@
-
 import base64
 import hashlib
 import io
@@ -136,12 +135,15 @@ fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pi
 fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
 with st.sidebar.expander("🔑 Direct Fyers Login", expanded=True):
-    st.markdown("सुविधा के लिए नीचे दिए गए बटन पर क्लिक करके सीधे Fyers पर लॉगिन करें:")
-    fyers_login_url = f"https://api.fyers.in/api/v3/generate-authcode?client_id={app_id_val}&redirect_uri=https://trade.fyers.in/api-login/redirect-uri/index.html&response_type=code&state=sample_state"
-    st.markdown(f'<a href="{fyers_login_url}" target="_blank"><button style="width:100%;background-color:#00b4d8;color:white;padding:10px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">1. Open Fyers Login Page</button></a>', unsafe_allow_html=True)
+    st.markdown("पहले Fyers Web पर लॉगिन करें:")
+    st.markdown('<a href="https://trade.fyers.in/" target="_blank"><button style="width:100%;background-color:#4f46e5;color:white;padding:8px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-bottom:10px;">1. Open Fyers Web</button></a>', unsafe_allow_html=True)
+    
+    st.markdown("फिर यह ऑथ-लिंक खोलें:")
+    direct_code_url = f"https://api.fyers.in/api/v3/generate-authcode?client_id={app_id_val}&redirect_uri=https://trade.fyers.in/api-login/redirect-uri/index.html&response_type=code&state=sample_state"
+    st.markdown(f'<a href="{direct_code_url}" target="_blank"><button style="width:100%;background-color:#0284c7;color:white;padding:8px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">2. Get Auth Code Link</button></a>', unsafe_allow_html=True)
 
-    auth_code_input = st.text_input("2. Paste Auth Code from URL here", type="default")
-    if st.button("3. Save Token & Load Capital", use_container_width=True):
+    auth_code_input = st.text_input("3. Paste Auth Code here", type="default")
+    if st.button("4. Save Token & Load Capital", use_container_width=True):
         if auth_code_input and app_id_val and sec_id_val:
             try:
                 set_db_val("f_app_id", app_id_val)
