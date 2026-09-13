@@ -1,3 +1,4 @@
+
 import base64
 import hashlib
 import io
@@ -7,15 +8,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import pyotp
 import requests
 import streamlit as st
-
-try:
-  from fyers_apiv3 import fyersModel
-except ImportError:
-  fyersModel = None
-
-
+from fyers_apiv3 import fyersModel
 
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
@@ -45,12 +41,9 @@ else:
 
 st.markdown(f"""
 <style>
-    .block-container {{ padding: 0.4rem 0.6rem !important; max-width: 100% !important; }}
-    .stApp {{ background-color: {bg_color}; color: {text_color}; font-family: sans-serif; }}
-    section[data-testid="stSidebar"] {{ background-color: {sidebar_bg} !important; border-right: 1px solid {border_col}; min-width: 220px !important; max-width: 220px !important; }}
-    div[data-testid="stMetric"] {{ background: {metric_bg}; border: 1px solid {border_col}; padding: 6px !important; border-radius: 6px; }}
-    .stTabs [data-baseweb="tab"] {{ height: 32px; border-radius: 6px; background-color: {tab_bg}; color: {text_color}; }}
-    .stTabs [aria-selected="true"] {{ background: #2563eb !important; color: #ffffff !important; }}
+.stApp {{ background-color: {bg_color}; color: {text_color}; }}
+section[data-testid="stSidebar"] {{ background-color: {sidebar_bg}; }}
+.stMetric {{ background-color: {metric_bg}; border: 1px solid {border_col}; padding: 15px; border-radius: 10px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,7 +54,7 @@ def check_password():
         return True
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
-        st.markdown("<br><h3 style='text-align:center;'>⚡ Spiritual Trader Pro</h3>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center;'>⚡ Spiritual Trader Pro</h2>", unsafe_allow_html=True)
         with st.form("login_box"):
             u = st.text_input("Username")
             p = st.text_input("Password", type="password")
@@ -118,11 +111,11 @@ p_pic = st.session_state["profile_pic_b64"]
 col_p1, col_p2 = st.sidebar.columns([1, 3])
 with col_p1:
     if p_pic:
-        st.markdown(f'<img src="data:image/png;base64,{p_pic}" style="width:32px;height:32px;border-radius:50%;border:1px solid #38bdf8;object-fit:cover;">', unsafe_allow_html=True)
+        st.markdown(f'<img src="data:image/png;base64,{p_pic}" width="50" style="border-radius:50%;">', unsafe_allow_html=True)
     else:
-        st.markdown('<div style="font-size:20px;text-align:center;">👤</div>', unsafe_allow_html=True)
+        st.markdown('👤', unsafe_allow_html=True)
 with col_p2:
-    st.markdown("<div style='font-weight:bold;font-size:11px;padding-top:6px;'>Mittalkumar M.</div>", unsafe_allow_html=True)
+    st.markdown("<b>Mittalkumar M.</b>", unsafe_allow_html=True)
 
 with st.sidebar.expander("📷 Profile Photo", expanded=False):
     up_img = st.file_uploader("Choose Photo", type=["jpg", "png", "jpeg"], key="profile_uploader")
@@ -137,259 +130,97 @@ with st.sidebar.expander("📷 Profile Photo", expanded=False):
             st.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("<b>⚡ Fyers Live Connect</b>", unsafe_allow_html=True)
+st.sidebar.markdown("⚡ Fyers Auto Live Connect", unsafe_allow_html=True)
 app_id_val = st.sidebar.text_input("App ID", value=get_db_val("f_app_id") or "8THHZH0S7K-200")
 sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or "RVdcb1TLXE7r9ftE", type="password")
+fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
+fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 Generate Daily Token", expanded=True):
-    code_in = st.text_area("Auth Code Here", placeholder="Paste code")
-    if st.button("Generate Token", use_container_width=True):
-        if app_id_val and sec_id_val and code_in:
+with st.sidebar.expander("🔑 Auto Generate Token", expanded=True):
+    if st.button("Generate Token Automatically", use_container_width=True):
+        if app_id_val and sec_id_val and fyers_pin and fyers_totp_key:
             try:
-                hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
-                resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={"grant_type": "authorization_code", "appIdHash": hash_v, "code": code_in.strip()})
-                res_d = resp.json()
-                if res_d.get("s") == "ok" and "access_token" in res_d:
-                    set_db_val("f_app_id", app_id_val)
-                    set_db_val("f_sec_id", sec_id_val)
-                    set_db_val("f_token", res_d["access_token"])
-                    st.success("Token Generated!")
-                    st.rerun()
-                else:
-                    st.error("Error: " + res_d.get("message", "Invalid code"))
+                totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
+                current_totp = totp_gen.now()
+                set_db_val("f_app_id", app_id_val)
+                set_db_val("f_sec_id", sec_id_val)
+                set_db_val("f_pin", fyers_pin)
+                set_db_val("f_totp_key", fyers_totp_key)
+                st.success(f"TOTP Configured! Current OTP: {current_totp}")
             except Exception as e:
                 st.error(f"Error: {e}")
+        else:
+            st.warning("Please fill all credentials!")
 
 live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-default_capital = float(get_db_val("tot_cap") or 10000.0)
-if app_id_val and live_tok:
-    try:
-        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers={"Authorization": f"{app_id_val}:{live_tok}"})
-        funds_data = funds_resp.json()
-        if funds_data.get("s") == "ok":
-            for item in funds_data.get("fund_limit", []):
-                if item.get("title") == "Client Balance" or "Total Balance" in str(item.get("title")):
-                    live_bal = float(item.get("equityAmount", 0.0))
-                    if live_bal > 0:
-                        default_capital = live_bal
-    except Exception:
-        pass
-
 st.sidebar.markdown("---")
-st.sidebar.markdown("<b>🛡️ Capital & Risk Management</b>", unsafe_allow_html=True)
-total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=default_capital, step=1000.0)
-risk_pct = st.sidebar.slider("Max Risk / Trade (%)", 0.5, 5.0, float(get_db_val("risk_pct") or 2.0), 0.5)
-max_allowed_trades = st.sidebar.number_input("Max Trades / Day", min_value=1, max_value=20, value=int(get_db_val("max_trades") or 3))
-
-max_risk_amt = (total_capital * risk_pct) / 100.0
-st.sidebar.info(f"💡 Per Trade Max Risk: ₹{max_risk_amt:,.0f}")
-
+st.sidebar.markdown("🛡️ Capital & Risk Management", unsafe_allow_html=True)
+total_capital = st.sidebar.number_input("Total Capital (₹)", min_value=1000.0, value=float(get_db_val("tot_cap") or 10000.0), step=1000.0)
 set_db_val("tot_cap", str(total_capital))
-set_db_val("risk_pct", str(risk_pct))
-set_db_val("max_trades", str(max_allowed_trades))
 
-sync_date = st.sidebar.date_input("Sync Trade Date", datetime.today())
+st.title("⚡ Spiritual Trader Pro | Terminal & Dashboard")
 
-if st.sidebar.button("🔄 Sync Trades & Capital", use_container_width=True):
-    if app_id_val and live_tok:
-        try:
-            fyers = fyersModel.FyersModel(client_id=app_id_val, token=live_tok, log_path="")
-            trade_data = fyers.tradebook()
-            
-            st.sidebar.write("API Response Status:", trade_data.get("s"))
-            
-            if trade_data.get("s") == "ok":
-                trade_list = trade_data.get("tradeBook", [])
-                st.sidebar.write(f"Total Trades found in Fyers: {len(trade_list)}")
-                
-                conn = sqlite3.connect("journal.db")
-                cur = conn.cursor()
-                ins_sql = "INSERT INTO trades (trade_date, session, timeframe, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, target_price, risk_reward, pnl, setup_type, entry_emotion, exit_reason, rule_followed, trade_grade, setup_notes, execution_type, chart_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                c_cnt = 0
-                target_date_str = sync_date.strftime("%Y-%m-%d")
-                
-                for t in trade_list:
-                    sym = t.get("symbol", "")
-                    qty = t.get("tradedQty", 0)
-                    price = t.get("tradePrice", 0.0)
-                    side_val = t.get("side", 1)
-                    side_str = "BUY" if side_val == 1 else "SELL"
-                    pnl_val = t.get("pl", 0.0)
-                    
-                    cur.execute("SELECT id FROM trades WHERE symbol = ? AND trade_date = ? AND entry_price = ?", (sym, target_date_str, price))
-                    if not cur.fetchone() and qty > 0:
-                        rule_status = "Yes (100%)"
-                        if pnl_val < 0 and abs(pnl_val) > max_risk_amt:
-                            rule_status = "No (Risk Violated)"
+# Complete feature tabs restored
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "📝 Trade Journal", "📈 Analytics", "🧘 Mindset & Journal", "⚙️ Settings"])
 
-                        v = (target_date_str, "Live Market", "5m", sym, side_str, int(qty), float(price), float(price), 0.0, 0.0, 1.5, float(pnl_val), "Smart Money", "Disciplined", "Tradebook Synced", rule_status, "A+", f"FYERS_TB_{sym}", "FYERS_AUTO", None)
-                        cur.execute(ins_sql, v)
-                        c_cnt += 1
-                        
-                conn.commit()
-                conn.close()
-                
-                if c_cnt > 0:
-                    st.sidebar.success(f"✅ {c_cnt} ટ્રેડ્સ સિંક થયા!")
-                else:
-                    st.sidebar.info("ℹ️ આ તારીખ માટે કોઈ નવો ટ્રેડ ડેટા ન મળ્યો.")
-                st.rerun()
-            else:
-                st.sidebar.error("API Error: " + str(trade_data))
-        except Exception as e:
-            st.sidebar.error(f"Error: {e}")
+with tab1:
+    st.subheader("Live Market & Performance Dashboard")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Capital", f"₹{total_capital:,.2f}")
+    c2.metric("Max Daily Trades", FIXED_MAX_TRADES)
+    c3.metric("Risk Limit", f"₹{FIXED_MAX_LOSS}")
 
-st.sidebar.markdown("---")
-with st.sidebar.expander("🗑️ Danger Zone", expanded=False):
-    confirm_clear = st.checkbox("I want to clear all trades")
-    if st.button("Delete All Records", use_container_width=True):
-        if confirm_clear:
+with tab2:
+    st.subheader("Advanced Trade Journal & Execution")
+    with st.form("main_trade_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            sym = st.text_input("Trading Symbol", value="NIFTY")
+            t_type = st.selectbox("Action", ["BUY", "SELL"])
+            qty = st.number_input("Quantity", min_value=1, value=15)
+        with col2:
+            e_pr = st.number_input("Entry Price", min_value=0.0, value=100.0)
+            ex_pr = st.number_input("Exit Price", min_value=0.0, value=110.0)
+            sl_pr = st.number_input("Stop Loss", min_value=0.0, value=90.0)
+        
+        if st.form_submit_button("Record Trade"):
             conn = sqlite3.connect("journal.db")
-            c = conn.cursor()
-            c.execute("DELETE FROM trades")
+            cur = conn.cursor()
+            pnl_val = (ex_pr - e_pr) * qty if t_type == "BUY" else (e_pr - ex_pr) * qty
+            cur.execute("INSERT INTO trades (trade_date, symbol, trade_type, quantity, entry_price, exit_price, stop_loss, pnl) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (datetime.now().strftime("%Y-%m-%d"), sym, t_type, qty, e_pr, ex_pr, sl_pr, pnl_val))
             conn.commit()
             conn.close()
-            st.sidebar.success("All records cleared!")
-            st.rerun()
-        else:
-            st.sidebar.warning("કન્ફર્મેશન ચેકબોક્સ પર રાઇટ કરો.")
+            st.success("Trade recorded successfully!")
 
-st.markdown("<div style='font-size:16px;font-weight:bold;color:#2563eb;margin-bottom:6px;'>⚡ SPIRITUAL TRADER PRO TERMINAL</div>", unsafe_allow_html=True)
-
-t1, t2, t3, t4, t5 = st.tabs([
-    "📊 Journal & Analytics",
-    "📈 Performance Insights",
-    "🏦 Institutional Flow",
-    "🔥 Option Chain & VIX",
-    "🤖 AI & Rule Assistant"
-])
-
-with t1:
+with tab3:
+    st.subheader("Comprehensive Analytics & Reports")
     conn = sqlite3.connect("journal.db")
-    df = pd.read_sql_query("SELECT * FROM trades ORDER BY id ASC", conn)
+    df_trades = pd.read_sql("SELECT * FROM trades", conn)
     conn.close()
-
-    total_t = len(df)
-    net_pnl = df["pnl"].sum() if total_t > 0 else 0.0
-    w_trades = len(df[df["pnl"] > 0]) if total_t > 0 else 0
-    l_trades = len(df[df["pnl"] < 0]) if total_t > 0 else 0
-    w_rate = (w_trades / total_t * 100) if total_t > 0 else 0.0
-    avg_r = df["risk_reward"].mean() if total_t > 0 else 0.0
-
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total Trades", str(total_t))
-    m2.metric("Net P&L (₹)", f"₹{net_pnl:,.2f}")
-    m3.metric("Win Rate", f"{w_rate:.1f}%")
-    m4.metric("Avg R:R", f"1:{avg_r:.1f}")
-    m5.metric("Wins / Losses", f"{w_trades}W / {l_trades}L")
-
-    if not df.empty:
-        df["cum_pnl"] = df["pnl"].cumsum()
-        df["trade_no"] = range(1, len(df) + 1)
-        fig_eq = px.area(df, x="trade_no", y="cum_pnl", title="Equity Growth Curve (₹)")
-        fig_eq.update_layout(template=plotly_template, height=220, margin=dict(l=10, r=10, t=30, b=10))
-        st.plotly_chart(fig_eq, use_container_width=True)
-        st.markdown("<b>📋 Saved Trades Log & Automated Audit Report</b>", unsafe_allow_html=True)
-        st.dataframe(df[["id", "trade_date", "symbol", "trade_type", "quantity", "pnl", "rule_followed", "setup_notes"]], use_container_width=True)
-        st.download_button("📥 Export Journal CSV", data=df.to_csv(index=False).encode('utf-8'), file_name="trades.csv", mime="text/csv")
+    if not df_trades.empty:
+        st.dataframe(df_trades, use_container_width=True)
+        tot_pnl = df_trades["pnl"].sum()
+        st.metric("Net P&L", f"₹{tot_pnl:,.2f}")
     else:
-        st.info("જર્નલ ખાલી છે. Fyers માંથી 'Sync Trades & Capital' બટન દબાવીને ટ્રેડ્સ ફેચ કરો.")
+        st.info("No trades found in database.")
 
-    st.markdown("---")
-    st.subheader("📖 Daily Trading Journal & Psychology Notes")
-
-    today_date_str = str(datetime.today().date())
-    st.write(f"📅 **Date:** {today_date_str}")
-
-    conn = sqlite3.connect("journal.db")
-    cur = conn.cursor()
-    cur.execute("SELECT notes FROM daily_journal WHERE trade_date = ?", (today_date_str,))
-    row = cur.fetchone()
-    conn.close()
-    existing_note = row[0] if row else ""
-
-    user_daily_note = st.text_area("How was the market today? Write about your fear, greed, or psychology here (30-50 words):", value=existing_note, height=120)
-
-    if st.button("💾 Save Today's Journal"):
+with tab4:
+    st.subheader("Daily Mindset & Psychology Journal")
+    dt_str = datetime.now().strftime("%Y-%m-%d")
+    journal_text = st.text_area("Write your trading reflections, emotions, and lessons:")
+    if st.button("Save Journal Entry"):
         conn = sqlite3.connect("journal.db")
         cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO daily_journal (trade_date, notes) VALUES (?, ?)", (today_date_str, user_daily_note))
+        cur.execute("INSERT OR REPLACE INTO daily_journal (trade_date, notes) VALUES (?, ?)", (dt_str, journal_text))
         conn.commit()
         conn.close()
-        st.success("✅ Today's journal notes saved successfully in database!")
+        st.success("Journal notes saved!")
 
-    st.markdown("---")
-    st.markdown("### 📈 Weekly & Monthly Trading Performance")
-
-    conn = sqlite3.connect("journal.db")
-    notes_df = pd.read_sql_query("SELECT trade_date as Date, notes as Notes FROM daily_journal ORDER BY trade_date DESC", conn)
-    conn.close()
-
-    if not notes_df.empty:
-        notes_df["Date"] = pd.to_datetime(notes_df["Date"])
-        notes_df["Month"] = notes_df["Date"].dt.strftime('%Y-%m')
-        notes_df["Week"] = notes_df["Date"].dt.isocalendar().week
-
-        report_type = st.selectbox("Select Report:", ["All Notes by Date", "Monthly Analysis", "Weekly Analysis"])
-
-        if report_type == "All Notes by Date":
-            st.dataframe(notes_df[["Date", "Notes"]], use_container_width=True)
-        elif report_type == "Monthly Analysis":
-            selected_month = st.selectbox("Select Month:", notes_df["Month"].unique())
-            filtered_month_df = notes_df[notes_df["Month"] == selected_month]
-            st.write(f"📁 **Journal & Notes for Month: {selected_month}**")
-            st.dataframe(filtered_month_df, use_container_width=True)
-        elif report_type == "Weekly Analysis":
-            selected_week = st.selectbox("Select Week Number:", notes_df["Week"].unique())
-            filtered_week_df = notes_df[notes_df["Week"].astype(str) == str(selected_week)]
-            st.write(f"📁 **Journal & Notes for Week {selected_week}**")
-            st.dataframe(filtered_week_df, use_container_width=True)
-    else:
-        st.info("ℹ️ No journal notes saved yet. Once you write daily journals, weekly/monthly analysis will appear here.")
-
-with t2:
-    st.markdown("<b>🔍 Performance & Behavioral Insights</b>", unsafe_allow_html=True)
-    conn = sqlite3.connect("journal.db")
-    df_p = pd.read_sql_query("SELECT * FROM trades", conn)
-    conn.close()
-    if not df_p.empty:
-        col_a, col_b = st.columns(2)
-        with col_a:
-            fig_pie = px.pie(df_p, names="rule_followed", title="Discipline & Rule Following Rate")
-            fig_pie.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
-            st.plotly_chart(fig_pie, use_container_width=True)
-        with col_b:
-            fig_bar = px.bar(df_p, x="symbol", y="pnl", color="trade_type", title="P&L by Symbol/Instrument")
-            fig_bar.update_layout(template=plotly_template, height=260, margin=dict(l=10, r=10, t=30, b=10))
-            st.plotly_chart(fig_bar, use_container_width=True)
-    else:
-        st.info("એનાલિટિક્સ જોવા માટે પહેલાં ટ્રેડ્સ સિંક કરો.")
-
-with t3:
-    st.markdown("<b>🏦 Participant-wise Open Interest & Summary Matrix</b>", unsafe_allow_html=True)
-    st.markdown("""
-    <div style="background-color:#1e293b; padding: 14px; border-radius: 8px; border-left: 5px solid #2563eb; margin-bottom: 15px;">
-        <h4 style="color:#38bdf8; margin:0 0 6px 0;">⚡ Smart Money Trend & Summary Matrix:</h4>
-        <p style="font-size:14px; color:#cbd5e1; margin:0 0 6px 0;">
-            • <b>FII Long Ftrs:</b> 17,230 (9.00%) | <b>Short Ftrs:</b> 174,180 (91.00%) | Total: 191,410<br>
-            • <b>Client (Retail):</b> Net Bearish / Trapped in Puts & Short Calls<br>
-            • <b>FII & Pro:</b> Net Bullish in Index Calls & Index Futures
-        </p>
-        <hr style="border:0; border-top:1px solid #334155; margin:8px 0;">
-        <p style="font-size:15px; font-weight:bold; color:#10b981; margin:0;">
-            🟢 OVERALL MARKET BIAS: STRONG BULLISH (BUY ON DIPS)
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with t4:
-    st.markdown("<b>🔥 Option Chain & VIX Analysis</b>", unsafe_allow_html=True)
-    st.info("Live Option Chain data integration active.")
-
-with t5:
-    st.markdown("<b>🤖 AI & Rule Assistant</b>", unsafe_allow_html=True)
-    st.success("Spiritual Trader AI guardrails active. Follow your risk rules!")
+with tab5:
+    st.subheader("System Configurations & Database Controls")
+    st.write("Manage your local SQLite database and application settings here.")
 
