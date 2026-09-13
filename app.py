@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import pyotp
 import requests
 import streamlit as st
+from fyers_apiv3 import fyersModel
 
 st.set_page_config(
     page_title="Spiritual Trader Pro | Terminal",
@@ -135,40 +136,58 @@ sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or 
 fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
 fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 Direct Auto Login", expanded=True):
-    if st.button("Login & Fetch Capital Automatically", use_container_width=True):
-        if app_id_val and sec_id_val and fyers_pin and fyers_totp_key:
+with st.sidebar.expander("🔑 Direct Auto Token", expanded=True):
+    if st.button("Generate Current TOTP", use_container_width=True):
+        if fyers_totp_key:
+            totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
+            st.success(f"Current TOTP: {totp_gen.now()}")
+        else:
+            st.warning("Please enter TOTP Key!")
+
+    auth_code_input = st.text_input("Enter Auth Code here", type="default")
+    if st.button("Save Token & Load Capital", use_container_width=True):
+        if auth_code_input and app_id_val and sec_id_val:
             try:
-                totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
-                current_totp = totp_gen.now()
-                
-                # Step 1: Send OTP / Request Token
-                s_url = "https://api-t1.fyers.in/vagator/v2/send_login_otp_v2"
-                s_resp = requests.post(s_url, json={"fy_id": app_id_val.split("-")[0], "app_id": "2"})
-                
-                # Direct TOTP validation and token generation via Fyers API
-                payload = {
-                    "fy_id": app_id_val.split("-")[0],
-                    "pin": fyers_pin,
-                    "totp": current_totp
-                }
-                # Using direct secure endpoint for automated login
                 set_db_val("f_app_id", app_id_val)
                 set_db_val("f_sec_id", sec_id_val)
                 set_db_val("f_pin", fyers_pin)
                 set_db_val("f_totp_key", fyers_totp_key)
                 
-                st.success(f"Generated Current OTP: {current_totp}. Ready for connection!")
+                hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
+                val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
+                    "grant_type": "authorization_code",
+                    "appIdHash": hash_v,
+                    "code": auth_code_input.strip()
+                }).json()
+                if val_resp.get("s") == "ok":
+                    set_db_val("f_token", val_resp["access_token"])
+                    st.success("Token Saved Successfully!")
+                    st.rerun()
+                else:
+                    st.error("Failed: " + str(val_resp))
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-            st.warning("Please fill all credentials and TOTP key!")
+            st.warning("Please enter Auth Code and API credentials!")
 
 live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
+# Automatically fetch live capital/funds from Fyers API if connected
 default_capital = float(get_db_val("tot_cap") or 10000.0)
+if app_id_val and live_tok:
+    try:
+        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+        funds_data = funds_resp.json()
+        if funds_data.get("s") == "ok":
+            for item in funds_data.get("fund_limit", []):
+                if item.get("title") == "Client Balance" or "Total Balance" in str(item.get("title")):
+                    live_bal = float(item.get("equityAmount", 0.0))
+                    if live_bal > 0:
+                        default_capital = live_bal
+    except Exception:
+        pass
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("🛡️ Capital & Risk Management", unsafe_allow_html=True)
