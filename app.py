@@ -135,10 +135,14 @@ sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or 
 fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
 fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 One-Click Connection", expanded=True):
-    manual_auth_code = st.text_input("Paste Fyers Redirect Auth Code here", type="default")
-    if st.button("Connect & Fetch Capital", use_container_width=True):
-        if manual_auth_code and app_id_val and sec_id_val:
+with st.sidebar.expander("🔑 Direct Fyers Login", expanded=True):
+    st.markdown("सुविधा के लिए नीचे दिए गए बटन पर क्लिक करके सीधे Fyers पर लॉगिन करें:")
+    fyers_login_url = f"https://api.fyers.in/api/v3/generate-authcode?client_id={app_id_val}&redirect_uri=https://trade.fyers.in/api-login/redirect-uri/index.html&response_type=code&state=sample_state"
+    st.markdown(f'<a href="{fyers_login_url}" target="_blank"><button style="width:100%;background-color:#00b4d8;color:white;padding:10px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">1. Open Fyers Login Page</button></a>', unsafe_allow_html=True)
+
+    auth_code_input = st.text_input("2. Paste Auth Code from URL here", type="default")
+    if st.button("3. Save Token & Load Capital", use_container_width=True):
+        if auth_code_input and app_id_val and sec_id_val:
             try:
                 set_db_val("f_app_id", app_id_val)
                 set_db_val("f_sec_id", sec_id_val)
@@ -149,19 +153,19 @@ with st.sidebar.expander("🔑 One-Click Connection", expanded=True):
                 val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
                     "grant_type": "authorization_code",
                     "appIdHash": hash_v,
-                    "code": manual_auth_code.strip()
+                    "code": auth_code_input.strip()
                 }).json()
                 
                 if val_resp.get("s") == "ok":
                     set_db_val("f_token", val_resp["access_token"])
-                    st.success("Successfully Connected!")
+                    st.success("Successfully Connected & Loaded Capital!")
                     st.rerun()
                 else:
                     st.error("Error: " + str(val_resp.get("message", val_resp)))
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-            st.warning("Please enter the valid Auth Code from Fyers login redirect URL!")
+            st.warning("Please enter the Auth Code!")
 
 live_tok = get_db_val("f_token")
 if live_tok:
