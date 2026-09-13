@@ -136,28 +136,50 @@ sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or 
 fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
 fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 Generate Daily Token", expanded=True):
-    code_in = st.text_area("Auth Code Here (Or paste generated token)", placeholder="Paste code here")
-    if st.button("Generate & Connect Token", use_container_width=True):
-        if app_id_val and sec_id_val and code_in:
+with st.sidebar.expander("🔑 Direct Auto Login", expanded=True):
+    if st.button("Login & Fetch Capital Automatically", use_container_width=True):
+        if app_id_val and sec_id_val and fyers_pin and fyers_totp_key:
             try:
-                hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
-                resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
-                    "grant_type": "authorization_code",
-                    "appIdHash": hash_v,
-                    "code": code_in.strip()
-                })
-                res_d = resp.json()
-                if res_d.get("s") == "ok" and "access_token" in res_d:
-                    set_db_val("f_app_id", app_id_val)
-                    set_db_val("f_sec_id", sec_id_val)
-                    set_db_val("f_token", res_d["access_token"])
-                    st.success("Live Token Connected Successfully!")
-                    st.rerun()
+                totp_gen = pyotp.TOTP(fyers_totp_key.strip().replace(" ", ""))
+                current_totp = totp_gen.now()
+                
+                session = fyersModel.SessionModel(
+                    client_id=app_id_val,
+                    secret_key=sec_id_val,
+                    redirect_uri="https://trade.fyers.in/api-login/redirect-uri/index.html",
+                    response_type="code",
+                    grant_type="authorization_code"
+                )
+                response = session.generate_totp(
+                    client_id=app_id_val,
+                    secret_key=sec_id_val,
+                    pin=fyers_pin,
+                    totp=current_totp
+                )
+                if response.get("s") == "ok":
+                    auth_code = response.get("auth_code")
+                    hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
+                    val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
+                        "grant_type": "authorization_code",
+                        "appIdHash": hash_v,
+                        "code": auth_code
+                    }).json()
+                    if val_resp.get("s") == "ok":
+                        set_db_val("f_app_id", app_id_val)
+                        set_db_val("f_sec_id", sec_id_val)
+                        set_db_val("f_pin", fyers_pin)
+                        set_db_val("f_totp_key", fyers_totp_key)
+                        set_db_val("f_token", val_resp["access_token"])
+                        st.success("Connected & Capital Fetched!")
+                        st.rerun()
+                    else:
+                        st.error("Validation failed: " + str(val_resp))
                 else:
-                    st.error("Error: " + res_d.get("message", "Invalid code"))
+                    st.error("TOTP Gen Failed: " + str(response))
             except Exception as e:
                 st.error(f"Error: {e}")
+        else:
+            st.warning("Please fill all credentials and TOTP key!")
 
 live_tok = get_db_val("f_token")
 if live_tok:
