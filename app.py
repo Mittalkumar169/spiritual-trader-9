@@ -266,4 +266,4 @@ with tab5:
     st.subheader("System Configurations & Database Controls")
     st.write("Manage your local SQLite database and application settings here.")
 
-Show quoted text
+Show 
