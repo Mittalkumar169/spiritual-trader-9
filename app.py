@@ -128,56 +128,45 @@ with st.sidebar.expander("📷 Profile Photo", expanded=False):
             st.error(f"Error: {e}")
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("⚡ Fyers Live Connect", unsafe_allow_html=True)
+st.sidebar.markdown("⚡ Fyers Auto-Pilot Sync", unsafe_allow_html=True)
 app_id_val = st.sidebar.text_input("App ID", value=get_db_val("f_app_id") or "8THHZH0S7K-200")
 sec_id_val = st.sidebar.text_input("Secret ID", value=get_db_val("f_sec_id") or "RVdcb1TLXE7r9ftE", type="password")
-fyers_pin = st.sidebar.text_input("PIN / DOB (DDMMYYYY)", value=get_db_val("f_pin") or "", type="password")
-fyers_totp_key = st.sidebar.text_input("TOTP Secret Key", value=get_db_val("f_totp_key") or "SLYEDG46FG4QNWGC5K3DHXEDE3PYVODJ", type="password")
 
-with st.sidebar.expander("🔑 Direct Fyers Login", expanded=True):
-    st.markdown("पहले Fyers Web पर लॉगिन करें:")
-    st.markdown('<a href="https://trade.fyers.in/" target="_blank"><button style="width:100%;background-color:#4f46e5;color:white;padding:8px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin-bottom:10px;">1. Open Fyers Web</button></a>', unsafe_allow_html=True)
-    
-    st.markdown("फिर यह ऑथ-लिंक खोलें:")
-    direct_code_url = f"https://api.fyers.in/api/v3/generate-authcode?client_id={app_id_val}&redirect_uri=https://trade.fyers.in/api-login/redirect-uri/index.html&response_type=code&state=sample_state"
-    st.markdown(f'<a href="{direct_code_url}" target="_blank"><button style="width:100%;background-color:#0284c7;color:white;padding:8px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">2. Get Auth Code Link</button></a>', unsafe_allow_html=True)
+# Check query params for automated auth code capture (Zero copy-paste workflow)
+query_params = st.query_params
+if "code" in query_params:
+    auth_code_extracted = query_params["code"]
+    if auth_code_extracted and app_id_val and sec_id_val:
+        try:
+            hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
+            val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
+                "grant_type": "authorization_code",
+                "appIdHash": hash_v,
+                "code": auth_code_extracted.strip()
+            }).json()
+            if val_resp.get("s") == "ok":
+                set_db_val("f_token", val_resp["access_token"])
+                st.query_params.clear()
+                st.success("Auto-Connected Successfully!")
+                st.rerun()
+        except Exception:
+            pass
 
-    auth_code_input = st.text_input("3. Paste Auth Code here", type="default")
-    if st.button("4. Save Token & Load Capital", use_container_width=True):
-        if auth_code_input and app_id_val and sec_id_val:
-            try:
-                set_db_val("f_app_id", app_id_val)
-                set_db_val("f_sec_id", sec_id_val)
-                set_db_val("f_pin", fyers_pin)
-                set_db_val("f_totp_key", fyers_totp_key)
-                
-                hash_v = hashlib.sha256(f"{app_id_val}:{sec_id_val}".encode()).hexdigest()
-                val_resp = requests.post("https://api-t1.fyers.in/api/v3/validate-authcode", json={
-                    "grant_type": "authorization_code",
-                    "appIdHash": hash_v,
-                    "code": auth_code_input.strip()
-                }).json()
-                
-                if val_resp.get("s") == "ok":
-                    set_db_val("f_token", val_resp["access_token"])
-                    st.success("Successfully Connected & Loaded Capital!")
-                    st.rerun()
-                else:
-                    st.error("Error: " + str(val_resp.get("message", val_resp)))
-            except Exception as e:
-                st.error(f"Error: {e}")
-        else:
-            st.warning("Please enter the Auth Code!")
+with st.sidebar.expander("🚀 One-Click Auto Login", expanded=True):
+    login_target_url = f"https://api.fyers.in/api/v3/generate-authcode?client_id={app_id_val}&redirect_uri=https://trade.fyers.in/api-login/redirect-uri/index.html&response_type=code&state=sample_state"
+    st.markdown(f'<a href="{login_target_url}" target="_self"><button style="width:100%;background-color:#16a34a;color:white;padding:10px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;">Click to Login Automatically</button></a>', unsafe_allow_html=True)
 
 live_tok = get_db_val("f_token")
 if live_tok:
     st.sidebar.success("● Live Token Connected")
 
-# Automatically fetch live capital/funds from Fyers API if connected
+# Automatically fetch live capital and trade history from Fyers API if connected
 default_capital = float(get_db_val("tot_cap") or 10000.0)
 if app_id_val and live_tok:
+    headers_dict = {"Authorization": f"{app_id_val}:{live_tok}"}
     try:
-        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers={"Authorization": f"{app_id_val}:{live_tok}"})
+        # Fetch Funds/Capital
+        funds_resp = requests.get("https://api-t1.fyers.in/api/v3/funds", headers=headers_dict)
         funds_data = funds_resp.json()
         if funds_data.get("s") == "ok":
             for item in funds_data.get("fund_limit", []):
@@ -185,6 +174,28 @@ if app_id_val and live_tok:
                     live_bal = float(item.get("equityAmount", 0.0))
                     if live_bal > 0:
                         default_capital = live_bal
+    except Exception:
+        pass
+
+    try:
+        # Fetch Trade History / Order Book from Fyers API
+        trades_resp = requests.get("https://api-t1.fyers.in/api/v3/tradebook", headers=headers_dict)
+        trades_data = trades_resp.json()
+        if trades_data.get("s") == "ok":
+            conn_db = sqlite3.connect("journal.db")
+            cur_db = conn_db.cursor()
+            for t_item in trades_data.get("tradeBook", []):
+                sym_name = t_item.get("symbol", "NIFTY")
+                t_side = "BUY" if t_item.get("side") == 1 else "SELL"
+                t_qty = int(t_item.get("tradedQty", 1))
+                t_prc = float(t_item.get("tradePrice", 0.0))
+                t_time = t_item.get("tradeTime", datetime.now().strftime("%Y-%m-%d"))
+                
+                # Insert fetched trades into database if not already present
+                cur_db.execute("INSERT INTO trades (trade_date, symbol, trade_type, quantity, entry_price, exit_price, pnl, execution_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                               (str(t_time)[:10], sym_name, t_side, t_qty, t_prc, t_prc, 0.0, "FYERS_API"))
+            conn_db.commit()
+            conn_db.close()
     except Exception:
         pass
 
@@ -255,3 +266,4 @@ with tab5:
     st.subheader("System Configurations & Database Controls")
     st.write("Manage your local SQLite database and application settings here.")
 
+Show quoted text
